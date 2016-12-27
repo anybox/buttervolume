@@ -2,3 +2,5 @@ build/
 dist/
 sandbox*
 *.egg-info/
+*pyc
+.eggs/

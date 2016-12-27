@@ -59,7 +59,13 @@ def volume_unmount():
 
 @route('/VolumeDriver.Get', ['POST'])
 def volume_get():
-    return volume_path()
+    name = json.loads(request.body.read())['Name']
+    path = join(VOLUMES_PATH, name)
+    try:
+        check_call("btrfs subvolume show '%s'" % path, shell=True)
+    except Exception as e:
+        return json.dumps({'Err': '%s: no such volume' % path})
+    return json.dumps({'Volume': {'Name': name, 'Mountpoint': path}, 'Err': ''})
 
 
 @route('/VolumeDriver.Remove', ['POST'])

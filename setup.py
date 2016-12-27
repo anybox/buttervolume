@@ -19,8 +19,9 @@ setup(
         "bottle",
         "waitress",
     ],
-    tests_requires=[
+    tests_require=[
         "bottle",
         "webtest",
     ],
+    test_suite='test',
 )

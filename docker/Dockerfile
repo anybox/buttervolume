@@ -11,6 +11,7 @@ RUN set -x; \
 
 RUN git clone http://github.com/anybox/buttervolume \
     && cd buttervolume \
-    && python3 setup.py install
+    && python3 setup.py install \
+    && mkdir -p /run/docker/plugins
 
 CMD ["buttervolume"]
