@@ -37,7 +37,7 @@ Build and run the provided Dockerfile::
 
 Then create a container for buttervolume with access to the host volumes and the unix socket::
 
-    $ sudo docker create -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins/:/run/docker/plugins/ --name buttervolume buttervolume
+    $ sudo docker create --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins/:/run/docker/plugins/ --name buttervolume buttervolume
     $ docker start buttervolume
 
 TODO
