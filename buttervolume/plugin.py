@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import json
 from os.path import join, basename
@@ -10,6 +11,8 @@ logger = logging.getLogger()
 
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
+CODE = sys.getfilesystemencoding()
+jsonloads = lambda x: json.loads(bytes.decode(x, CODE))
 app = app()
 
 
@@ -24,7 +27,7 @@ def plugin_activate():
 
 @route('/VolumeDriver.Create', ['POST'])
 def volume_create():
-    name = json.loads(request.body.read())['Name']
+    name = jsonloads(request.body.read())['Name']
     volpath = join(VOLUMES_PATH, name)
     # volume already exists?
     if name in [v['Name']for v in json.loads(volume_list())['Volumes']]:
@@ -43,7 +46,7 @@ def volume_mount():
 
 @route('/VolumeDriver.Path', ['POST'])
 def volume_path():
-    name = json.loads(request.body.read())['Name']
+    name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
         check_call("btrfs subvolume show '%s'" % path, shell=True)
@@ -59,7 +62,7 @@ def volume_unmount():
 
 @route('/VolumeDriver.Get', ['POST'])
 def volume_get():
-    name = json.loads(request.body.read())['Name']
+    name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
         check_call("btrfs subvolume show '%s'" % path, shell=True)
@@ -70,7 +73,7 @@ def volume_get():
 
 @route('/VolumeDriver.Remove', ['POST'])
 def volume_remove():
-    name = json.loads(request.body.read())['Name']
+    name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
         check_call("btrfs subvolume delete '%s'" % path, shell=True)
