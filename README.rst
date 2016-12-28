@@ -54,6 +54,17 @@ Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/butter
 
     $ docker run --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
 
+Usage
+-----
+
+Once the plugin is running, whenever you create a container you can specify the
+volume driver with `docker create --volume-driver=btrfs --name <name> <image>`.
+You can also manually create a BTRFS volume with `docker volume create -d
+btrfs`.
+
+When you delete the volume with `docker volume rm <volume>` or `docker rm -v
+<container>`, the BTRFS subvolume is deleted. If you snapshotted the volume
+elsewhere in the meantime, the snapshots won't be deleted.
 
 TODO
 ----
