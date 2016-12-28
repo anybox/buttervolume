@@ -5,7 +5,7 @@ This package provides a Docker volume plugin that creates a BTRFS subvolume for
 each container volume.
 
 Introduction
-------------
+************
 
 `BTRFS <https://btrfs.wiki.kernel.org/>`_ is a next-generation copy-on-write
 filesystem with subvolume and snapshot support. A BTRFS `subvolume
@@ -26,7 +26,7 @@ Docker volumes, allowing fast and easy replication (and backup) across several
 nodes of a small cluster.
 
 Build
------
+*****
 
 You can build a docker image with provided Dockerfile::
 
@@ -34,7 +34,7 @@ You can build a docker image with provided Dockerfile::
     $ docker build -t buttervolume .
 
 Run
----
+***
 
 Make sure the directory `/var/lib/docker/volumes` is living in a BTRFS
 filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
@@ -55,7 +55,10 @@ Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/butter
     $ docker run --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
 
 Usage
------
+*****
+
+Creating and deleting volumes
+-----------------------------
 
 Once the plugin is running, whenever you create a container you can specify the
 volume driver with ``docker create --volume-driver=btrfs --name <name> <image>``.
@@ -66,8 +69,33 @@ When you delete the volume with ``docker rm -v <container>`` or ``docker volume
 rm <volume>``, the BTRFS subvolume is deleted. If you snapshotted the volume
 elsewhere in the meantime, the snapshots won't be deleted.
 
+Disabling copy-on-write
+-----------------------
+
+With `buttervolume` you can disable copy-on-write in a volume by creating a ``.nocow`` file at the
+root of the volume. The `buttervolume` plugin will detect it at mount-time and apply ``chattr +C`` on the volume root.
+
+Why disabling copy-on-write? If your docker volume stores databases such as
+PostgreSQL or MariaDB, the copy-on-write feature may hurt performance a lot.
+The good news is that disabling copy-on-write does not prevent from doing
+snaphots, so we get the best of both world: good performances with the ability
+to do snapshots.
+
+Creating such a ``.nocow`` file can easily be done in a Dockerfile, before the
+``VOLUME`` command:
+
+.. code:: Dockerfile
+
+    RUN mkdir -p /var/lib/postgresql/data \
+        && chown -R postgres: /var/lib/postgresql/data \
+        && touch /var/lib/postgresql/data/.nocow
+    VOLUME /var/lib/postgresql/data
+
+Alternatively you can create the ``.nocow`` file just after the ``docker
+create`` command, by inspecting the location of the created volumes with
+``docker inspect container | grep volumes``.
+
 TODO
-----
+****
 
 - btrfs send/receive to/from another host
-- `nocow` as a plugin option for storing databases

@@ -53,6 +53,10 @@ def volume_mount():
         except Exception as e:
             return json.dumps(
                 {'Err': 'could not disable COW on {}'.format(path)})
+    if exists(join(path, '_data', '.nocow')):
+        os.remove(join(path, '_data', '.nocow'))
+    if exists(join(path, '.nocow')):
+        os.remove(join(path, '.nocow'))
     return volume_path()
 
 
