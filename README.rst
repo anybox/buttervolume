@@ -25,20 +25,35 @@ We believe BTRFS subvolumes are a powerful and lightweight storage solution for
 Docker volumes, allowing fast and easy replication (and backup) across several
 nodes of a small cluster.
 
-Install and run
----------------
+Build
+-----
 
-First make sure the directory `/var/lib/docker/volumes` is living in a BTRFS filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
+You can build a docker image with provided Dockerfile::
 
-Build and run the provided Dockerfile::
-
-    $ sudo mkdir /run/docker/plugins
+    $ cd docker
     $ docker build -t buttervolume .
 
-Then create a container for buttervolume with access to the host volumes and the unix socket::
+Run
+---
+
+Make sure the directory `/var/lib/docker/volumes` is living in a BTRFS
+filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
+You should also create the directory for the unix socket of the plugin::
+
+    $ sudo mkdir /run/docker/plugins
+
+Then create a container for buttervolume with access to the host volumes and
+the unix socket
+
+Either from the image you just built::
 
     $ sudo docker create --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins/:/run/docker/plugins/ --name buttervolume buttervolume
     $ docker start buttervolume
+
+Or directly by pulling a prebaked image from the Docker hub::
+
+    $ docker run --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
+
 
 TODO
 ----
