@@ -50,7 +50,7 @@ Either from the image you just built::
     $ sudo docker create --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins/:/run/docker/plugins/ --name buttervolume buttervolume
     $ docker start buttervolume
 
-Or directly by pulling a prebaked image from the Docker hub::
+Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/buttervolume/>`_ from the Docker hub::
 
     $ docker run --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
 
