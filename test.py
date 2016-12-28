@@ -1,13 +1,16 @@
 from buttervolume import plugin
 from os.path import join
+from webtest import TestApp
 import json
+import os
+import subprocess
 import unittest
 import uuid
-from webtest import TestApp
 
 # check that the target dir is btrfs
 path = plugin.VOLUMES_PATH
 jsonloads = plugin.jsonloads
+
 
 class TestCase(unittest.TestCase):
 
@@ -24,19 +27,19 @@ class TestCase(unittest.TestCase):
         name = uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertEquals(resp, {'Err': ''})
 
         # get
         resp = jsonloads(self.app.post('/VolumeDriver.Get',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertEquals(resp['Volume']['Name'], name)
         self.assertEquals(resp['Volume']['Mountpoint'], path)
         self.assertEquals(resp['Err'], '')
-        
+
         # create the same volume
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertEquals(resp, {'Err': ''})
 
         # list
@@ -45,10 +48,10 @@ class TestCase(unittest.TestCase):
 
         # mount
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         # not existing path
         name2 = uuid.uuid4().hex
@@ -91,13 +94,31 @@ class TestCase(unittest.TestCase):
 
         # get
         resp = jsonloads(self.app.post('/VolumeDriver.Get',
-                                        json.dumps({'Name': name})).body)
+                                       json.dumps({'Name': name})).body)
         self.assertTrue(resp['Err'].endswith("no such volume"))
 
         # list
         resp = jsonloads(self.app.post('/VolumeDriver.List',
-                                        '{}').body)
+                                       '{}').body)
         self.assertEquals(resp['Volumes'], [])
+
+    def test_disable_cow(self):
+
+        # create a volume
+        name = uuid.uuid4().hex
+        path = join(plugin.VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+
+        # put the nocow command
+        os.system('touch {}'.format(join(path, '_data', '.nocow')))
+        os.system('touch {}'.format(join(path, '.nocow')))
+
+        # mount
+        self.app.post('/VolumeDriver.Mount', json.dumps({'Name': name}))
+        # check the nocow
+        self.assertTrue(b'-C-' in subprocess.check_output(
+                "lsattr -d '{}'".format(path), shell=True).split()[0])
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
 
 if __name__ == '__main__':
