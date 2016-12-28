@@ -58,12 +58,12 @@ Usage
 -----
 
 Once the plugin is running, whenever you create a container you can specify the
-volume driver with `docker create --volume-driver=btrfs --name <name> <image>`.
-You can also manually create a BTRFS volume with `docker volume create -d
-btrfs`.
+volume driver with ``docker create --volume-driver=btrfs --name <name> <image>``.
+You can also manually create a BTRFS volume with ``docker volume create -d
+btrfs``.
 
-When you delete the volume with `docker volume rm <volume>` or `docker rm -v
-<container>`, the BTRFS subvolume is deleted. If you snapshotted the volume
+When you delete the volume with ``docker rm -v <container>`` or ``docker volume
+rm <volume>``, the BTRFS subvolume is deleted. If you snapshotted the volume
 elsewhere in the meantime, the snapshots won't be deleted.
 
 TODO
