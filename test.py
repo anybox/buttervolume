@@ -24,7 +24,7 @@ class TestCase(unittest.TestCase):
         self.assertEquals(resp, {'Volumes': [], 'Err': ''})
 
         # create a volume
-        name = uuid.uuid4().hex
+        name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
                                        json.dumps({'Name': name})).body)
@@ -54,7 +54,7 @@ class TestCase(unittest.TestCase):
                                        json.dumps({'Name': name})).body)
         self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         # not existing path
-        name2 = uuid.uuid4().hex
+        name2 = 'buttervolume-test-' + uuid.uuid4().hex
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Mount',
             json.dumps({'Name': name2})).body)
@@ -68,7 +68,8 @@ class TestCase(unittest.TestCase):
         # not existing path
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
-            json.dumps({'Name': uuid.uuid4().hex})).body)
+            json.dumps({
+                'Name': 'buttervolume-test-' + uuid.uuid4().hex})).body)
         self.assertTrue(resp['Err'].endswith('no such volume'))
 
         # unmount
@@ -78,7 +79,8 @@ class TestCase(unittest.TestCase):
         self.assertEquals(resp, {'Err': ''})
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Unmount',
-            json.dumps({'Name': uuid.uuid4().hex})).body)
+            json.dumps({
+                'Name': 'buttervolume-test-' + uuid.uuid4().hex})).body)
         self.assertEquals(resp, {'Err': ''})
 
         # remove
@@ -105,7 +107,7 @@ class TestCase(unittest.TestCase):
     def test_disable_cow(self):
 
         # create a volume
-        name = uuid.uuid4().hex
+        name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
 

@@ -95,7 +95,15 @@ Alternatively you can create the ``.nocow`` file just after the ``docker
 create`` command, by inspecting the location of the created volumes with
 ``docker inspect container | grep volumes``.
 
+Test
+****
+
+If your volumes directory is a BTRFS partition or volume, tests can be run with::
+
+    $ sudo python setup.py test
+
 TODO
 ****
 
 - btrfs send/receive to/from another host
+- readonly volumes?
