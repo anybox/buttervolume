@@ -6,11 +6,14 @@ from os.path import join, basename, exists
 from subprocess import check_call
 from bottle import request, route, app
 from waitress import serve
+from subprocess import run
+from datetime import datetime
 logging.basicConfig()
 logger = logging.getLogger()
 
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
+SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
 CODE = sys.getfilesystemencoding()
 app = app()
 
@@ -111,6 +114,27 @@ def volume_list():
         volumes.append(p)
     return json.dumps({'Volumes': [{'Name': basename(v)} for v in volumes],
                        'Err': ''})
+
+
+@route('/VolumeDriver.Send', ['POST'])
+def volume_send():
+    volume_name = jsonloads(request.body.read())['Name']
+    volume_path = join(VOLUMES_PATH, volume_name)
+    snapshot_path = join(SNAPSHOTS_PATH, volume_name)
+    host = jsonloads(request.body.read())['Host']
+    remote_snapshots = jsonloads(request.body.read()
+                                 ).get('RemotePath', SNAPSHOTS_PATH)
+    timestamp = datetime.now().isoformat()
+    stamped_snapshot = '{}-{}'.format(volume_name, timestamp)
+    run('btrfs subvolume snapshot -r "{volume_path}" "{snapshot_path}"'
+        .format(**locals()), shell=True, check=True)
+    run('btrfs send "{snapshot_path}"'
+        ' | ssh \'{host}\' "btrfs receive \'{remote_snapshots}\''
+        '   && mv \'{remote_snapshots}/{volume_name}\''
+        '         \'{remote_snapshots}/{stamped_snapshot}\'"'
+        .format(**locals()), shell=True, check=True)
+    os.rename(snapshot_path, join(SNAPSHOTS_PATH, stamped_snapshot))
+    return json.dumps({'Err': '', 'Snapshot': stamped_snapshot})
 
 
 def main():

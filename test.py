@@ -105,7 +105,6 @@ class TestCase(unittest.TestCase):
         self.assertEquals(resp['Volumes'], [])
 
     def test_disable_cow(self):
-
         # create a volume
         name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
@@ -121,6 +120,44 @@ class TestCase(unittest.TestCase):
         self.assertTrue(b'-C-' in subprocess.check_output(
                 "lsattr -d '{}'".format(path), shell=True).split()[0])
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+
+    def test_send(self):
+        # create a volume with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(plugin.VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # send the volume (to the same host with another name)
+        resp = self.app.post('/VolumeDriver.Send', json.dumps({
+            'Name': name,
+            'Host': 'localhost',
+            'RemotePath': '/var/lib/docker/received'}))
+        snapshot = json.loads(resp.body.decode())['Snapshot']
+        remote_path = join('/var/lib/docker/received', snapshot)
+        # check the volumes have the same content
+        self.assertEquals(open(join(path, 'foobar')).read(),
+                          open(join(remote_path, 'foobar')).read())
+        # change files in the master volume
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('changed foobar')
+        # send again to the other volume
+        resp = self.app.post('/VolumeDriver.Send', json.dumps({
+            'Name': name,
+            'Host': 'localhost',
+            'RemotePath': '/var/lib/docker/received'}))
+        snapshot2 = json.loads(resp.body.decode())['Snapshot']
+        remote_path2 = join('/var/lib/docker/received', snapshot2)
+        # check the files are the same
+        self.assertEquals(open(join(path, 'foobar')).read(),
+                          open(join(remote_path2, 'foobar')).read())
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        subprocess.run(
+            'btrfs subvolume delete "{}"'
+            .format(join('/var/lib/docker/snapshots', snapshot)), shell=True)
+        subprocess.run(
+            'btrfs subvolume delete "{}"'
+            .format(join('/var/lib/docker/snapshots', snapshot2)), shell=True)
 
 
 if __name__ == '__main__':

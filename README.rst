@@ -100,7 +100,7 @@ Test
 
 If your volumes directory is a BTRFS partition or volume, tests can be run with::
 
-    $ sudo python setup.py test
+    $ sudo python3 setup.py test
 
 TODO
 ****
