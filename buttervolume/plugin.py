@@ -129,7 +129,12 @@ def volume_send():
     timestamp = datetime.now().isoformat()
     stamped_snapshot = '{}-{}'.format(volume_name, timestamp)
     btrfs.Subvolume(volume_path).snapshot(snapshot_path, readonly=True)
-    run('btrfs send "{snapshot_path}"'
+    # list snapshots. If none, do the 1st snapshot. Otherwise take the latest
+    all_snapshots = sorted([s for s in os.listdir(SNAPSHOTS_PATH)
+                            if s.startswith(volume_name) and s != volume_name])
+    latest = all_snapshots[-1] if all_snapshots else None
+    parent = '-p {}'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
+    run('btrfs send {parent} "{snapshot_path}"'
         ' | ssh \'{host}\' "btrfs receive \'{remote_snapshots}\''
         '   && mv \'{remote_snapshots}/{volume_name}\''
         '         \'{remote_snapshots}/{stamped_snapshot}\'"'
