@@ -2,7 +2,7 @@ from subprocess import run as _run, PIPE
 
 
 def run(cmd):
-    return _run(cmd, shell=True, check=True, stdout=PIPE)
+    return _run(cmd, shell=True, check=True, stdout=PIPE).stdout.decode()
 
 
 class Subvolume(object):
@@ -12,8 +12,8 @@ class Subvolume(object):
         self.path = path
 
     def show(self):
-        raw = run('btrfs subvolume show "{}"'
-                  .format(self.path)).stdout.decode()
+        """somewhat hardcoded..."""
+        raw = run('btrfs subvolume show "{}"'.format(self.path))
         output = {k.strip(): v.strip()
                   for k, v in [l.split(':', 1) for l in raw.split('\n')[1:12]]}
         assert(raw.split('\n')[12].strip() == 'Snapshot(s):')
@@ -23,7 +23,7 @@ class Subvolume(object):
     def snapshot(self, target, readonly=False):
         r = '-r' if readonly else ''
         return run('btrfs subvolume snapshot {} "{}" "{}"'
-                   .format(r, self.path, target)).stdout.decode()
+                   .format(r, self.path, target))
 
     def create(self):
         return run('btrfs subvolume create "{}"'.format(self.path))
