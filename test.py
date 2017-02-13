@@ -1,9 +1,9 @@
-from buttervolume import plugin
+from buttervolume import plugin, btrfs
 from os.path import join
 from webtest import TestApp
 import json
 import os
-import subprocess
+from subprocess import check_output
 import unittest
 import uuid
 
@@ -21,38 +21,38 @@ class TestCase(unittest.TestCase):
     def test(self):
         # list
         resp = jsonloads(self.app.post('/VolumeDriver.List', '{}').body)
-        self.assertEquals(resp, {'Volumes': [], 'Err': ''})
+        self.assertEqual(resp, {'Volumes': [], 'Err': ''})
 
         # create a volume
         name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
                                        json.dumps({'Name': name})).body)
-        self.assertEquals(resp, {'Err': ''})
+        self.assertEqual(resp, {'Err': ''})
 
         # get
         resp = jsonloads(self.app.post('/VolumeDriver.Get',
                                        json.dumps({'Name': name})).body)
-        self.assertEquals(resp['Volume']['Name'], name)
-        self.assertEquals(resp['Volume']['Mountpoint'], path)
-        self.assertEquals(resp['Err'], '')
+        self.assertEqual(resp['Volume']['Name'], name)
+        self.assertEqual(resp['Volume']['Mountpoint'], path)
+        self.assertEqual(resp['Err'], '')
 
         # create the same volume
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
                                        json.dumps({'Name': name})).body)
-        self.assertEquals(resp, {'Err': ''})
+        self.assertEqual(resp, {'Err': ''})
 
         # list
         resp = jsonloads(self.app.post('/VolumeDriver.List').body)
-        self.assertEquals(resp['Volumes'], [{u'Name': name}])
+        self.assertEqual(resp['Volumes'], [{u'Name': name}])
 
         # mount
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
                                        json.dumps({'Name': name})).body)
-        self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
                                        json.dumps({'Name': name})).body)
-        self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         # not existing path
         name2 = 'buttervolume-test-' + uuid.uuid4().hex
         resp = jsonloads(self.app.post(
@@ -64,7 +64,7 @@ class TestCase(unittest.TestCase):
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
             json.dumps({'Name': name})).body)
-        self.assertEquals(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
         # not existing path
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
@@ -76,18 +76,18 @@ class TestCase(unittest.TestCase):
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Unmount',
             json.dumps({'Name': name})).body)
-        self.assertEquals(resp, {'Err': ''})
+        self.assertEqual(resp, {'Err': ''})
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Unmount',
             json.dumps({
                 'Name': 'buttervolume-test-' + uuid.uuid4().hex})).body)
-        self.assertEquals(resp, {'Err': ''})
+        self.assertEqual(resp, {'Err': ''})
 
         # remove
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Remove',
             json.dumps({'Name': name})).body)
-        self.assertEquals(resp, {'Err': ''})
+        self.assertEqual(resp, {'Err': ''})
         # remove again
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Remove',
@@ -102,7 +102,7 @@ class TestCase(unittest.TestCase):
         # list
         resp = jsonloads(self.app.post('/VolumeDriver.List',
                                        '{}').body)
-        self.assertEquals(resp['Volumes'], [])
+        self.assertEqual(resp['Volumes'], [])
 
     def test_disable_cow(self):
         # create a volume
@@ -117,7 +117,7 @@ class TestCase(unittest.TestCase):
         # mount
         self.app.post('/VolumeDriver.Mount', json.dumps({'Name': name}))
         # check the nocow
-        self.assertTrue(b'-C-' in subprocess.check_output(
+        self.assertTrue(b'-C-' in check_output(
                 "lsattr -d '{}'".format(path), shell=True).split()[0])
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
@@ -136,8 +136,8 @@ class TestCase(unittest.TestCase):
         snapshot = json.loads(resp.body.decode())['Snapshot']
         remote_path = join('/var/lib/docker/received', snapshot)
         # check the volumes have the same content
-        self.assertEquals(open(join(path, 'foobar')).read(),
-                          open(join(remote_path, 'foobar')).read())
+        self.assertEqual(open(join(path, 'foobar')).read(),
+                         open(join(remote_path, 'foobar')).read())
         # change files in the master volume
         with open(join(path, 'foobar'), 'w') as f:
             f.write('changed foobar')
@@ -149,15 +149,16 @@ class TestCase(unittest.TestCase):
         snapshot2 = json.loads(resp.body.decode())['Snapshot']
         remote_path2 = join('/var/lib/docker/received', snapshot2)
         # check the files are the same
-        self.assertEquals(open(join(path, 'foobar')).read(),
-                          open(join(remote_path2, 'foobar')).read())
+        self.assertEqual(open(join(path, 'foobar')).read(),
+                         open(join(remote_path2, 'foobar')).read())
+        # check the second snapshot is a child of the first one
+        self.assertEqual(btrfs.Subvolume(remote_path).show()['UUID'],
+                         btrfs.Subvolume(remote_path2).show()['Parent UUID'])
+        return
+        # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        subprocess.run(
-            'btrfs subvolume delete "{}"'
-            .format(join('/var/lib/docker/snapshots', snapshot)), shell=True)
-        subprocess.run(
-            'btrfs subvolume delete "{}"'
-            .format(join('/var/lib/docker/snapshots', snapshot2)), shell=True)
+        btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot)).delete()
+        btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot2)).delete()
 
 
 if __name__ == '__main__':

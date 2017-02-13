@@ -8,6 +8,7 @@ from bottle import request, route, app
 from waitress import serve
 from subprocess import run
 from datetime import datetime
+from buttervolume import btrfs
 logging.basicConfig()
 logger = logging.getLogger()
 
@@ -23,7 +24,7 @@ def jsonloads(x):
 
 
 def check_btrfs(path):
-    check_call("btrfs filesystem label '{}'".format(path), shell=True)
+    btrfs.Filesystem(path).label()
 
 
 @route('/Plugin.Activate', ['POST'])
@@ -39,7 +40,7 @@ def volume_create():
     if name in [v['Name']for v in json.loads(volume_list())['Volumes']]:
         return json.dumps({'Err': ''})
     try:
-        check_call("btrfs subvolume create '{}'".format(volpath), shell=True)
+        btrfs.Subvolume(volpath).create()
     except Exception as e:
         return {'Err': e.strerror}
     return json.dumps({'Err': ''})
@@ -68,7 +69,7 @@ def volume_path():
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
-        check_call("btrfs subvolume show '{}'".format(path), shell=True)
+        btrfs.Subvolume(path).show()
     except Exception as e:
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps({'Mountpoint': path, 'Err': ''})
@@ -84,7 +85,7 @@ def volume_get():
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
-        check_call("btrfs subvolume show '{}'".format(path), shell=True)
+        btrfs.Subvolume(path).show()
     except Exception as e:
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps(
@@ -96,7 +97,7 @@ def volume_remove():
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
     try:
-        check_call("btrfs subvolume delete '{}'".format(path), shell=True)
+        btrfs.Subvolume(path).delete()
     except Exception as e:
         return json.dumps({'Err': '{}: no such volume'.format(name)})
     return json.dumps({'Err': ''})
@@ -105,9 +106,10 @@ def volume_remove():
 @route('/VolumeDriver.List', ['POST'])
 def volume_list():
     volumes = []
-    for p in [join(VOLUMES_PATH, v) for v in os.listdir(VOLUMES_PATH)]:
+    for p in [join(VOLUMES_PATH, v) for v in os.listdir(VOLUMES_PATH)
+              if v != 'metadata.db']:
         try:
-            check_call("btrfs subvolume show '{}'".format(p), shell=True)
+            btrfs.Subvolume(p).show()
         except Exception as e:
             logger.info(e)
             continue
@@ -126,8 +128,7 @@ def volume_send():
                                  ).get('RemotePath', SNAPSHOTS_PATH)
     timestamp = datetime.now().isoformat()
     stamped_snapshot = '{}-{}'.format(volume_name, timestamp)
-    run('btrfs subvolume snapshot -r "{volume_path}" "{snapshot_path}"'
-        .format(**locals()), shell=True, check=True)
+    btrfs.Subvolume(volume_path).snapshot(snapshot_path, readonly=True)
     run('btrfs send "{snapshot_path}"'
         ' | ssh \'{host}\' "btrfs receive \'{remote_snapshots}\''
         '   && mv \'{remote_snapshots}/{volume_name}\''
