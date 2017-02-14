@@ -14,4 +14,5 @@ RUN git clone http://github.com/anybox/buttervolume \
     && python3 setup.py install \
     && mkdir -p /run/docker/plugins
 
-CMD ["buttervolume run"]
+ENTRYPOINT ["buttervolume"]
+CMD ["run"]
