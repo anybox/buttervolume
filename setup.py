@@ -8,7 +8,8 @@ setup(
     url="https://github.com/anybox/buttervolume",
     license="Apache License, Version 2.0",
     description="Docker plugin to manage Docker Volumes as BTRFS subvolumes",
-    long_description=open('README.rst').read() + '\n' + open('CHANGES.rst').read(),
+    long_description=open('README.rst').read() + '\n'
+        + open('CHANGES.rst').read(),
     packages=find_packages(),
     entry_points={
         "console_scripts": [
@@ -17,6 +18,7 @@ setup(
     },
     install_requires=[
         "bottle",
+        "requests-unixsocket",
         "waitress",
     ],
     tests_require=[

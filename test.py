@@ -16,9 +16,12 @@ class TestCase(unittest.TestCase):
 
     def setUp(self):
         self.app = TestApp(plugin.app)
-        plugin.check_btrfs(path)
+        # check we have a btrfs
+        btrfs.Filesystem(path).label()
 
     def test(self):
+        """first basic scenario
+        """
         # list
         resp = jsonloads(self.app.post('/VolumeDriver.List', '{}').body)
         self.assertEqual(resp, {'Volumes': [], 'Err': ''})
@@ -105,6 +108,8 @@ class TestCase(unittest.TestCase):
         self.assertEqual(resp['Volumes'], [])
 
     def test_disable_cow(self):
+        """Putting a .nocow file in the volume creation should disable cow
+        """
         # create a volume
         name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
@@ -122,6 +127,8 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
     def test_send(self):
+        """We can send a snapshot incrementally to another host
+        """
         # create a volume with a file
         name = 'buttervolume-test-' + uuid.uuid4().hex
         path = join(plugin.VOLUMES_PATH, name)
@@ -158,6 +165,80 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot)).delete()
         btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot2)).delete()
+        btrfs.Subvolume(join('/var/lib/docker/received', snapshot)).delete()
+        btrfs.Subvolume(join('/var/lib/docker/received', snapshot2)).delete()
+
+    def test_snapshot(self):
+        """Check we can snapshot a volume
+        """
+        # create a volume with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(plugin.VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # snapshot the volume
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snapshot = join(plugin.SNAPSHOTS_PATH,
+                        json.loads(resp.body.decode())['Snapshot'])
+        # check the snapshot has the same content
+        self.assertEqual(open(join(path, 'foobar')).read(),
+                         open(join(snapshot, 'foobar')).read())
+        # clean up
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        self.app.post('/VolumeDriver.Snapshot.Destroy',
+                      json.dumps({'Name': snapshot}))
+
+    def test_snapshots(self):
+        """Check we can list snapshots
+        """
+        # create two volumes with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(plugin.VOLUMES_PATH, name)
+        name2 = 'buttervolume-test-' + uuid.uuid4().hex
+        path2 = join(plugin.VOLUMES_PATH, name2)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        with open(join(path2, 'foobar2'), 'w') as f:
+            f.write('foobar2')
+        # snapshot each volume twice
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snap1 = json.loads(resp.body.decode())['Snapshot']
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snap2 = json.loads(resp.body.decode())['Snapshot']
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name2}))
+        snap3 = json.loads(resp.body.decode())['Snapshot']
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name2}))
+        snap4 = json.loads(resp.body.decode())['Snapshot']
+        # list all the snapshots
+        resp = self.app.post('/VolumeDriver.Snapshot.List', json.dumps({}))
+        snapshots = json.loads(resp.body.decode())['Snapshots']
+        # check the list of snapshots
+        self.assertEqual(set(snapshots), set([snap1, snap2, snap3, snap4]))
+        # list all the snapshots of the second volume only
+        resp = self.app.post('/VolumeDriver.Snapshot.List',
+                             json.dumps({'Name': name2}))
+        snapshots = json.loads(resp.body.decode())['Snapshots']
+        # check the list of snapshots
+        self.assertEqual(set(snapshots), set([snap3, snap4]))
+        # clean up
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
+        self.app.post('/VolumeDriver.Snapshot.Destroy',
+                      json.dumps({'Name': snap1}))
+        self.app.post('/VolumeDriver.Snapshot.Destroy',
+                      json.dumps({'Name': snap2}))
+        self.app.post('/VolumeDriver.Snapshot.Destroy',
+                      json.dumps({'Name': snap3}))
+        self.app.post('/VolumeDriver.Snapshot.Destroy',
+                      json.dumps({'Name': snap4}))
 
 
 if __name__ == '__main__':
