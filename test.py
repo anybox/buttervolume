@@ -154,7 +154,6 @@ class TestCase(unittest.TestCase):
         # check the second snapshot is a child of the first one
         self.assertEqual(btrfs.Subvolume(remote_path).show()['UUID'],
                          btrfs.Subvolume(remote_path2).show()['Parent UUID'])
-        return
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot)).delete()
