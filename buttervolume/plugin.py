@@ -1,30 +1,25 @@
-import argparse
+import csv
 import json
 import logging
 import os
-import requests_unixsocket
-import sys
-import urllib
-from bottle import request, route, app
+from bottle import request, route
 from buttervolume import btrfs
 from datetime import datetime
 from os.path import join, basename, exists
 from subprocess import check_call
 from subprocess import run
-from waitress import serve
 logging.basicConfig()
 logger = logging.getLogger()
 
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
-CODE = sys.getfilesystemencoding()
-SOCKET = '/run/docker/plugins/btrfs.sock'
-app = app()
+SCHEDULE = "/etc/buttervolume/schedule.cfg"
+SCHEDULE_LOG = {'snapshot': {}, 'send': {}}
 
 
-def jsonloads(x):
-    return json.loads(bytes.decode(x, CODE))
+def jsonloads(stuff):
+    return json.loads(stuff.decode())
 
 
 @route('/Plugin.Activate', ['POST'])
@@ -53,7 +48,7 @@ def volume_mount():
     if exists(join(path, '_data', '.nocow')) or exists(join(path, '.nocow')):
         try:
             check_call("chattr +C '{}'".format(join(path)), shell=True)
-            logger.info("disabled COW on {}".format(path))
+            logger.info("disabled COW on %s", path)
         except Exception as e:
             return json.dumps(
                 {'Err': 'could not disable COW on {}'.format(path)})
@@ -176,66 +171,19 @@ def snapshot_destroy():
     btrfs.Subvolume(path).delete()
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        prog="buttervolume",
-        description="Command-line client for the docker btrfs volume plugin",)
-    subparsers = parser.add_subparsers(help='sub-commands')
-    parser_run = subparsers.add_parser(
-        'run', help='Run the plugin in foreground')
-    parser_snapshot = subparsers.add_parser(
-        'snapshot', help='Snapshot a volume')
-    parser_snapshot.add_argument(
-        'name', metavar='name', nargs=1, help='Name of the volume to snapshot')
-    parser_snapshots = subparsers.add_parser(
-        'snapshots', help='List snapshots')
-    parser_snapshots.add_argument(
-        'name', metavar='name', nargs='?',
-        help='Name of the volume to list related snapshots')
-
-    def get_from(resp, key):
-        """get specified key from plugin response output
-        """
-        error = jsonloads(resp.content)['Err']
-        if resp.status_code != 200:
-            print('Error {}: {}'.format(resp.status_code, resp.reason),
-                  file=sys.stderr)
-            return None
-        elif error:
-            print(error, file=sys.stderr)
-            return None
-        else:
-            return jsonloads(resp.content)[key]
-
-    def snapshot(args):
-        name = args.name[0]
-        resp = requests_unixsocket.Session().post(
-            'http+unix://{}/VolumeDriver.Snapshot'
-            .format(urllib.parse.quote_plus(SOCKET)),
-            json.dumps({'Name': name}))
-        return get_from(resp, 'Snapshot') or sys.exit(1)
-
-    def snapshots(args):
-        name = args.name
-        resp = requests_unixsocket.Session().post(
-            'http+unix://{}/VolumeDriver.Snapshot.List'
-            .format(urllib.parse.quote_plus(SOCKET)),
-            json.dumps({'Name': name}))
-        snapshots = get_from(resp, 'Snapshots')
-        if snapshots is None:
-            sys.exit(1)
-        elif snapshots:
-            print('\n'.join(snapshots))
-
-    def run(args):
-        serve(app, unix_socket=SOCKET)
-
-    parser_snapshot.set_defaults(func=snapshot)
-    parser_snapshots.set_defaults(func=snapshots)
-    parser_run.set_defaults(func=run)
-
-    args = parser.parse_args()
-    if hasattr(args, 'func'):
-        args.func(args)
-    else:
-        parser.print_help()
+@route('/VolumeDriver.Schedule', ['POST'])
+def schedule():
+    name = jsonloads(request.body.read())['Name']
+    timer = jsonloads(request.body.read())['Timer']
+    action = jsonloads(request.body.read())['Action']
+    schedule = [(name, action, timer)]
+    if os.path.exists(SCHEDULE):
+        with open(SCHEDULE) as f:
+            for n, a, t in csv.reader(f):
+                # skip the line we want to write
+                if n == name and a == action:
+                    continue
+                schedule.append((n, a, t))
+        with open(SCHEDULE, 'w') as f:
+            for line in schedule:
+                csv.writer(f).writerow(line)

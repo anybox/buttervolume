@@ -1,4 +1,7 @@
-from buttervolume import plugin, btrfs
+from buttervolume import btrfs, cli
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, jsonloads
+from buttervolume import plugin
+from buttervolume.cli import scheduler
 from os.path import join
 from webtest import TestApp
 import json
@@ -6,18 +9,19 @@ import os
 from subprocess import check_output
 import unittest
 import uuid
+import tempfile
 
 # check that the target dir is btrfs
-path = plugin.VOLUMES_PATH
-jsonloads = plugin.jsonloads
+SCHEDULE = plugin.SCHEDULE = tempfile.mkstemp()[1]
+SCHEDULE_LOG = plugin.SCHEDULE_LOG
 
 
 class TestCase(unittest.TestCase):
 
     def setUp(self):
-        self.app = TestApp(plugin.app)
+        self.app = TestApp(cli.app)
         # check we have a btrfs
-        btrfs.Filesystem(path).label()
+        btrfs.Filesystem(VOLUMES_PATH).label()
 
     def test(self):
         """first basic scenario
@@ -28,7 +32,7 @@ class TestCase(unittest.TestCase):
 
         # create a volume
         name = 'buttervolume-test-' + uuid.uuid4().hex
-        path = join(plugin.VOLUMES_PATH, name)
+        path = join(VOLUMES_PATH, name)
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
                                        json.dumps({'Name': name})).body)
         self.assertEqual(resp, {'Err': ''})
@@ -52,10 +56,10 @@ class TestCase(unittest.TestCase):
         # mount
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
                                        json.dumps({'Name': name})).body)
-        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(VOLUMES_PATH, name))
         resp = jsonloads(self.app.post('/VolumeDriver.Mount',
                                        json.dumps({'Name': name})).body)
-        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(VOLUMES_PATH, name))
         # not existing path
         name2 = 'buttervolume-test-' + uuid.uuid4().hex
         resp = jsonloads(self.app.post(
@@ -67,7 +71,7 @@ class TestCase(unittest.TestCase):
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
             json.dumps({'Name': name})).body)
-        self.assertEqual(resp['Mountpoint'], join(plugin.VOLUMES_PATH, name))
+        self.assertEqual(resp['Mountpoint'], join(VOLUMES_PATH, name))
         # not existing path
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
@@ -112,7 +116,7 @@ class TestCase(unittest.TestCase):
         """
         # create a volume
         name = 'buttervolume-test-' + uuid.uuid4().hex
-        path = join(plugin.VOLUMES_PATH, name)
+        path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
 
         # put the nocow command
@@ -131,7 +135,7 @@ class TestCase(unittest.TestCase):
         """
         # create a volume with a file
         name = 'buttervolume-test-' + uuid.uuid4().hex
-        path = join(plugin.VOLUMES_PATH, name)
+        path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
             f.write('foobar')
@@ -143,8 +147,9 @@ class TestCase(unittest.TestCase):
         snapshot = json.loads(resp.body.decode())['Snapshot']
         remote_path = join('/var/lib/docker/received', snapshot)
         # check the volumes have the same content
-        self.assertEqual(open(join(path, 'foobar')).read(),
-                         open(join(remote_path, 'foobar')).read())
+        with open(join(path, 'foobar')) as x:
+            with open(join(remote_path, 'foobar')) as y:
+                self.assertEqual(x.read(), y.read())
         # change files in the master volume
         with open(join(path, 'foobar'), 'w') as f:
             f.write('changed foobar')
@@ -156,8 +161,9 @@ class TestCase(unittest.TestCase):
         snapshot2 = json.loads(resp.body.decode())['Snapshot']
         remote_path2 = join('/var/lib/docker/received', snapshot2)
         # check the files are the same
-        self.assertEqual(open(join(path, 'foobar')).read(),
-                         open(join(remote_path2, 'foobar')).read())
+        with open(join(path, 'foobar')) as x:
+            with open(join(remote_path2, 'foobar')) as y:
+                self.assertEqual(x.read(), y.read())
         # check the second snapshot is a child of the first one
         self.assertEqual(btrfs.Subvolume(remote_path).show()['UUID'],
                          btrfs.Subvolume(remote_path2).show()['Parent UUID'])
@@ -173,18 +179,19 @@ class TestCase(unittest.TestCase):
         """
         # create a volume with a file
         name = 'buttervolume-test-' + uuid.uuid4().hex
-        path = join(plugin.VOLUMES_PATH, name)
+        path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
             f.write('foobar')
         # snapshot the volume
         resp = self.app.post('/VolumeDriver.Snapshot',
                              json.dumps({'Name': name}))
-        snapshot = join(plugin.SNAPSHOTS_PATH,
+        snapshot = join(SNAPSHOTS_PATH,
                         json.loads(resp.body.decode())['Snapshot'])
         # check the snapshot has the same content
-        self.assertEqual(open(join(path, 'foobar')).read(),
-                         open(join(snapshot, 'foobar')).read())
+        with open(join(path, 'foobar')) as x:
+            with open(join(snapshot, 'foobar')) as y:
+                self.assertEqual(x.read(), y.read())
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Snapshot.Destroy',
@@ -195,9 +202,9 @@ class TestCase(unittest.TestCase):
         """
         # create two volumes with a file
         name = 'buttervolume-test-' + uuid.uuid4().hex
-        path = join(plugin.VOLUMES_PATH, name)
+        path = join(VOLUMES_PATH, name)
         name2 = 'buttervolume-test-' + uuid.uuid4().hex
-        path2 = join(plugin.VOLUMES_PATH, name2)
+        path2 = join(VOLUMES_PATH, name2)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
         with open(join(path, 'foobar'), 'w') as f:
@@ -239,6 +246,43 @@ class TestCase(unittest.TestCase):
                       json.dumps({'Name': snap3}))
         self.app.post('/VolumeDriver.Snapshot.Destroy',
                       json.dumps({'Name': snap4}))
+
+    def test_schedule(self):
+        """check we can schedule snapshots and sends
+        """
+        # create a volume with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name2 = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        path2 = join(VOLUMES_PATH, name2)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        with open(join(path2, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # schedule a snapshot of the two volumes every 60 minutes
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'snapshot', 'Timer': 60}))
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name2, 'Action': 'snapshot', 'Timer': 60}))
+        # check that the schedule is stored
+        with open(SCHEDULE) as f:
+            lines = f.readlines()
+            self.assertEqual(lines[1], '{},snapshot,60\n'.format(name))
+        # run the scheduler
+        scheduler(SCHEDULE, test=True)
+        # check we have two snapshots
+        snaps = os.listdir(SNAPSHOTS_PATH)
+        self.assertEqual(
+            2, len({s for s in snaps
+                    if s.startswith(name) or s.startswith(name2)}))
+        for snap in os.listdir(SNAPSHOTS_PATH):
+            if snap.startswith(name) or snap.startswith(name2):
+                self.app.post('/VolumeDriver.Snapshot.Destroy',
+                              json.dumps({'Name': snap}))
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
 
 
 if __name__ == '__main__':
