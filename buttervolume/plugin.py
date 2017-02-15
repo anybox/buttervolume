@@ -173,6 +173,9 @@ def snapshot_destroy():
 
 @route('/VolumeDriver.Schedule', ['POST'])
 def schedule():
+    """Schedule or unschedule a job
+    TODO add a lock
+    """
     name = jsonloads(request.body.read())['Name']
     timer = jsonloads(request.body.read())['Timer']
     action = jsonloads(request.body.read())['Action']
