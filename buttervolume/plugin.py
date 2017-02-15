@@ -5,16 +5,16 @@ import os
 from bottle import request, route
 from buttervolume import btrfs
 from datetime import datetime
-from os.path import join, basename, exists
+from os.path import join, basename, exists, dirname
 from subprocess import check_call
 from subprocess import run
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
-SCHEDULE = "/etc/buttervolume/schedule.cfg"
+SCHEDULE = "/etc/buttervolume/schedule.csv"
 SCHEDULE_LOG = {'snapshot': {}, 'send': {}}
 
 
@@ -176,7 +176,9 @@ def schedule():
     name = jsonloads(request.body.read())['Name']
     timer = jsonloads(request.body.read())['Timer']
     action = jsonloads(request.body.read())['Action']
-    schedule = [(name, action, timer)]
+    schedule = []
+    if timer:  # 0 means unschedule!
+        schedule.append((name, action, timer))
     if os.path.exists(SCHEDULE):
         with open(SCHEDULE) as f:
             for n, a, t in csv.reader(f):
@@ -184,6 +186,8 @@ def schedule():
                 if n == name and a == action:
                     continue
                 schedule.append((n, a, t))
-        with open(SCHEDULE, 'w') as f:
-            for line in schedule:
-                csv.writer(f).writerow(line)
+    os.makedirs(dirname(SCHEDULE), exist_ok=True)
+    with open(SCHEDULE, 'w') as f:
+        for line in schedule:
+            csv.writer(f).writerow(line)
+    return json.dumps({'Err': ''})

@@ -1,15 +1,16 @@
-from buttervolume import btrfs, cli
-from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, jsonloads
-from buttervolume import plugin
-from buttervolume.cli import scheduler
-from os.path import join
-from webtest import TestApp
 import json
 import os
-from subprocess import check_output
 import unittest
 import uuid
 import tempfile
+from buttervolume import btrfs, cli
+from buttervolume import plugin
+from buttervolume.cli import scheduler
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, jsonloads
+from datetime import datetime, timedelta
+from os.path import join
+from subprocess import check_output
+from webtest import TestApp
 
 # check that the target dir is btrfs
 SCHEDULE = plugin.SCHEDULE = tempfile.mkstemp()[1]
@@ -277,6 +278,21 @@ class TestCase(unittest.TestCase):
         self.assertEqual(
             2, len({s for s in snaps
                     if s.startswith(name) or s.startswith(name2)}))
+        # unschedule
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'snapshot', 'Timer': 0}))
+        with open(SCHEDULE) as f:
+            lines = f.readlines()
+            self.assertEqual(len(lines), 1)
+        # simulate we spent more time
+        SCHEDULE_LOG['snapshot'][name2] = datetime.now() - timedelta(1)
+        # run the scheduler and check we only have one more snapshot
+        scheduler(SCHEDULE, test=True)
+        snaps = os.listdir(SNAPSHOTS_PATH)
+        self.assertEqual(
+            3, len({s for s in snaps
+                    if s.startswith(name) or s.startswith(name2)}))
+        # clean up
         for snap in os.listdir(SNAPSHOTS_PATH):
             if snap.startswith(name) or snap.startswith(name2):
                 self.app.post('/VolumeDriver.Snapshot.Destroy',

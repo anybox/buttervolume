@@ -13,17 +13,16 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "buttervolume = buttervolume.plugin:main",
+            "buttervolume = buttervolume.cli:main",
         ],
     },
     install_requires=[
         "bottle",
         "requests-unixsocket",
         "waitress",
+        "webtest",
     ],
     tests_require=[
-        "bottle",
-        "webtest",
     ],
     test_suite='test',
 )

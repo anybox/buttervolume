@@ -12,10 +12,10 @@ from datetime import datetime, timedelta
 from threading import Timer
 from waitress import serve
 from webtest import TestApp
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 SOCKET = '/run/docker/plugins/btrfs.sock'
-TIMER = 60.0
+TIMER = 60
 app = app()
 
 
@@ -26,16 +26,16 @@ def get_from(resp, key):
         content = resp.content
     except:  # TestApp
         content = resp.body
-    error = jsonloads(content)['Err']
     if resp.status_code != 200:
         print('Error {}: {}'.format(resp.status_code, resp.reason),
               file=sys.stderr)
         return None
-    elif error:
-        print(error, file=sys.stderr)
-        return None
     else:
-        return jsonloads(content)[key]
+        error = jsonloads(content)['Err']
+        if error:
+            print(error, file=sys.stderr)
+            return None
+    return jsonloads(content)[key]
 
 
 def snapshot(args, test=False):
@@ -50,6 +50,19 @@ def snapshot(args, test=False):
             .format(urllib.parse.quote_plus(SOCKET), urlpath),
             param)
     return get_from(resp, 'Snapshot') or sys.exit(1)
+
+
+def schedule(args):
+    name = args.name[0]
+    action = args.action[0]
+    timer = args.timer[0]
+    urlpath = '/VolumeDriver.Schedule'
+    param = json.dumps({
+        'Name': name, 'Action': action, 'Timer': timer})
+    requests_unixsocket.Session().post(
+        ('http+unix://{}{}')
+        .format(urllib.parse.quote_plus(SOCKET), urlpath),
+        param)
 
 
 def snapshots(args):
@@ -112,7 +125,8 @@ def scheduler(config=SCHEDULE, test=False):
 
 def run(args):
     # run a thread for the scheduled snapshots
-    Timer(TIMER, scheduler).start()
+    print('Starting scheduler job every {}s'.format(TIMER))
+    Timer(1, scheduler).start()
     # listen to requests
     serve(app, unix_socket=SOCKET)
 
@@ -133,9 +147,21 @@ def main():
     parser_snapshots.add_argument(
         'name', metavar='name', nargs='?',
         help='Name of the volume to list related snapshots')
+    parser_schedule = subparsers.add_parser(
+        'schedule', help='(un)Schedule a snapshot')
+    parser_schedule.add_argument(
+        'action', metavar='action', nargs=1,
+        help='Name of the action to schedule (snapshot)')
+    parser_schedule.add_argument(
+        'timer', metavar='timer', nargs=1, type=int,
+        help='Time span in minutes between two actions')
+    parser_schedule.add_argument(
+        'name', metavar='name', nargs=1,
+        help='Name of the volume to schedule snapshots')
 
     parser_snapshot.set_defaults(func=snapshot)
     parser_snapshots.set_defaults(func=snapshots)
+    parser_schedule.set_defaults(func=schedule)
     parser_run.set_defaults(func=run)
 
     args = parser.parse_args()
