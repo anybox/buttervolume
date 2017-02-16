@@ -249,7 +249,7 @@ class TestCase(unittest.TestCase):
                       json.dumps({'Name': snap4}))
 
     def test_schedule(self):
-        """check we can schedule snapshots and sends
+        """check we can schedule actions such as snapshots
         """
         # create a volume with a file
         name = 'buttervolume-test-' + uuid.uuid4().hex

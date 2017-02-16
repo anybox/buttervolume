@@ -92,6 +92,8 @@ def scheduler(config=SCHEDULE, test=False):
     # open the config and launch the tasks
     if not os.path.exists(config):
         logger.warn('No config file %s', config)
+        if not test:
+            Timer(TIMER, scheduler).start()
         return
     name = action = timer = ''
     # run each action in the schedule if time is elapsed since the last one
