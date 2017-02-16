@@ -7,7 +7,7 @@ import requests_unixsocket
 import sys
 import urllib
 from bottle import app
-from buttervolume.plugin import jsonloads, SCHEDULE, SCHEDULE_LOG
+from buttervolume.plugin import jsonloads, SCHEDULE, SCHEDULE_LOG, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
 from threading import Timer
 from waitress import serve
@@ -126,6 +126,9 @@ def scheduler(config=SCHEDULE, test=False):
 
 
 def run(args):
+    if not os.path.exists(SNAPSHOTS_PATH):
+        logger.info('Creating %s', SNAPSHOTS_PATH)
+        os.makedirs(SNAPSHOTS_PATH, exist_ok=True)
     # run a thread for the scheduled snapshots
     print('Starting scheduler job every {}s'.format(TIMER))
     Timer(1, scheduler).start()
