@@ -18,5 +18,6 @@ RUN git clone http://github.com/anybox/buttervolume \
     && apt-get remove -y git \
     && rm -rf /var/lib/apt/lists/*
 
+VOLUME /etc/buttervolume
 ENTRYPOINT ["buttervolume"]
 CMD ["run"]
