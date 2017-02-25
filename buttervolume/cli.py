@@ -40,9 +40,8 @@ def get_from(resp, key):
 
 
 def snapshot(args, test=False):
-    name = args.name[0]
     urlpath = '/VolumeDriver.Snapshot'
-    param = json.dumps({'Name': name})
+    param = json.dumps({'Name': args.name[0]})
     if test:
         resp = TestApp(app).post(urlpath, param)
     else:
@@ -54,12 +53,11 @@ def snapshot(args, test=False):
 
 
 def schedule(args):
-    name = args.name[0]
-    action = args.action[0]
-    timer = args.timer[0]
     urlpath = '/VolumeDriver.Schedule'
     param = json.dumps({
-        'Name': name, 'Action': action, 'Timer': timer})
+        'Name': args.name[0],
+        'Action': args.action[0],
+        'Timer': args.timer[0]})
     requests_unixsocket.Session().post(
         ('http+unix://{}{}')
         .format(urllib.parse.quote_plus(SOCKET), urlpath),
@@ -77,11 +75,10 @@ def scheduled(args):
 
 
 def snapshots(args):
-    name = args.name
     resp = requests_unixsocket.Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.List'
         .format(urllib.parse.quote_plus(SOCKET)),
-        json.dumps({'Name': name}))
+        json.dumps({'Name': args.name}))
     snapshots = get_from(resp, 'Snapshots')
     if snapshots is None:
         sys.exit(1)
@@ -90,11 +87,10 @@ def snapshots(args):
 
 
 def restore(args):
-    name = args.name[0]
     resp = requests_unixsocket.Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Restore'
         .format(urllib.parse.quote_plus(SOCKET)),
-        json.dumps({'Name': name}))
+        json.dumps({'Name': args.name[0]}))
     print(get_from(resp, 'VolumeBackup'))
 
 
