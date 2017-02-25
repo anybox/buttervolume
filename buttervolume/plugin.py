@@ -194,3 +194,15 @@ def schedule():
         for line in schedule:
             csv.writer(f).writerow(line)
     return json.dumps({'Err': ''})
+
+
+@route('/VolumeDriver.Schedule.List', ['GET'])
+def schedule_list():
+    """List scheduled jobs
+    """
+    schedule = []
+    if os.path.exists(SCHEDULE):
+        with open(SCHEDULE) as f:
+            for n, a, t in csv.reader(f):
+                schedule.append({'Name': n, 'Timer': t, 'Action': a})
+    return json.dumps({'Err': '', 'Schedule': schedule})

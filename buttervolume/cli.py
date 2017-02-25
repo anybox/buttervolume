@@ -65,6 +65,15 @@ def schedule(args):
         param)
 
 
+def scheduled(args):
+    urlpath = '/VolumeDriver.Schedule.List'
+    resp = requests_unixsocket.Session().get(
+        ('http+unix://{}{}')
+        .format(urllib.parse.quote_plus(SOCKET), urlpath))
+    scheduled = get_from(resp, 'Schedule')
+    print('\n'.join(scheduled))
+
+
 def snapshots(args):
     name = args.name
     resp = requests_unixsocket.Session().post(
@@ -163,10 +172,13 @@ def main():
     parser_schedule.add_argument(
         'name', metavar='name', nargs=1,
         help='Name of the volume to schedule snapshots')
+    parser_scheduled = subparsers.add_parser(
+        'scheduled', help='List scheduled actions')
 
     parser_snapshot.set_defaults(func=snapshot)
     parser_snapshots.set_defaults(func=snapshots)
     parser_schedule.set_defaults(func=schedule)
+    parser_scheduled.set_defaults(func=scheduled)
     parser_run.set_defaults(func=run)
 
     args = parser.parse_args()

@@ -262,11 +262,21 @@ class TestCase(unittest.TestCase):
             f.write('foobar')
         with open(join(path2, 'foobar'), 'w') as f:
             f.write('foobar')
+        # check we have no schedule
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 0)
         # schedule a snapshot of the two volumes every 60 minutes
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'snapshot', 'Timer': 60}))
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name2, 'Action': 'snapshot', 'Timer': 60}))
+        # check we have 2 scheduled jobs
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 2)
+        self.assertEqual(schedule[0]['Action'], 'snapshot')
+        self.assertEqual(schedule[1]['Timer'], '60')
         # check that the schedule is stored
         with open(SCHEDULE) as f:
             lines = f.readlines()
@@ -284,6 +294,10 @@ class TestCase(unittest.TestCase):
         with open(SCHEDULE) as f:
             lines = f.readlines()
             self.assertEqual(len(lines), 1)
+        # check we have 1 scheduled job
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 1)
         # simulate we spent more time
         SCHEDULE_LOG['snapshot'][name2] = datetime.now() - timedelta(1)
         # run the scheduler and check we only have one more snapshot
@@ -292,6 +306,15 @@ class TestCase(unittest.TestCase):
         self.assertEqual(
             3, len({s for s in snaps
                     if s.startswith(name) or s.startswith(name2)}))
+        # unschedule the last job
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name2, 'Action': 'snapshot', 'Timer': 0}))
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 0)
+        # unschedule
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'snapshot', 'Timer': 0}))
         # clean up
         for snap in os.listdir(SNAPSHOTS_PATH):
             if snap.startswith(name) or snap.startswith(name2):
