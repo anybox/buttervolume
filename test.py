@@ -323,6 +323,44 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
 
+    def test_restore(self):
+        """ Check we can restore a snapshot as a volume
+        """
+        # create a volume with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('original foobar')
+        # snapshot the volume
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snapshot = json.loads(resp.body.decode())['Snapshot']
+        # modify the file
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('modified foobar')
+        # overwrite the volume with the snapshot
+        resp = self.app.post('/VolumeDriver.Snapshot.Restore',
+                             json.dumps({'Name': snapshot}))
+        # check the volume has the original content
+        with open(join(path, 'foobar')) as f:
+            self.assertEqual(f.read(), 'original foobar')
+        # check we have another snapshot with the volume backup
+        volume_backup = json.loads(resp.body.decode())['VolumeBackup']
+        path = join(SNAPSHOTS_PATH, volume_backup)
+        with open(join(path, 'foobar')) as f:
+            self.assertEqual(f.read(), 'modified foobar')
+        # delete the volume and check we still can restore
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        resp = self.app.post('/VolumeDriver.Snapshot.Restore',
+                             json.dumps({'Name': snapshot}))
+        path = join(VOLUMES_PATH, name)
+        with open(join(path, 'foobar')) as f:
+            self.assertEqual(f.read(), 'original foobar')
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
+        btrfs.Subvolume(join(SNAPSHOTS_PATH, volume_backup)).delete()
+
 
 if __name__ == '__main__':
     unittest.main()

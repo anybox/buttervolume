@@ -36,7 +36,7 @@ def get_from(resp, key):
         if error:
             print(error, file=sys.stderr)
             return None
-    return jsonloads(content)[key]
+    return jsonloads(content).get(key)
 
 
 def snapshot(args, test=False):
@@ -87,6 +87,15 @@ def snapshots(args):
         sys.exit(1)
     elif snapshots:
         print('\n'.join(snapshots))
+
+
+def restore(args):
+    name = args.name[0]
+    resp = requests_unixsocket.Session().post(
+        'http+unix://{}/VolumeDriver.Snapshot.Restore'
+        .format(urllib.parse.quote_plus(SOCKET)),
+        json.dumps({'Name': name}))
+    print(get_from(resp, 'VolumeBackup'))
 
 
 class Arg():
@@ -176,11 +185,17 @@ def main():
         help='Name of the volume to schedule snapshots')
     parser_scheduled = subparsers.add_parser(
         'scheduled', help='List scheduled actions')
+    parser_restore = subparsers.add_parser(
+        'restore', help='Restore a snapshot')
+    parser_restore.add_argument(
+        'name', metavar='name', nargs=1,
+        help='Name of the snapshot to restore')
 
     parser_snapshot.set_defaults(func=snapshot)
     parser_snapshots.set_defaults(func=snapshots)
     parser_schedule.set_defaults(func=schedule)
     parser_scheduled.set_defaults(func=scheduled)
+    parser_restore.set_defaults(func=restore)
     parser_run.set_defaults(func=run)
 
     args = parser.parse_args()

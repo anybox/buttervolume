@@ -1,3 +1,4 @@
+import os
 from subprocess import run as _run, PIPE
 
 
@@ -19,6 +20,15 @@ class Subvolume(object):
         assert(raw.split('\n')[12].strip() == 'Snapshot(s):')
         output['Snapshot(s)'] = [l.strip() for l in raw.split('\n')[13:]]
         return output
+
+    def exists(self):
+        if not os.path.exists(self.path):
+            return False
+        try:
+            self.show()
+        except:
+            return False
+        return True
 
     def snapshot(self, target, readonly=False):
         r = '-r' if readonly else ''
