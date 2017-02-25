@@ -1,0 +1,10 @@
+version: '2.1'
+services:
+  plugin:
+    build: .
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /var/lib/docker:/var/lib/docker
+      - /run/docker/plugins:/run/docker/plugins
+      - /etc/buttervolume
