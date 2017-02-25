@@ -7,7 +7,8 @@ import requests_unixsocket
 import sys
 import urllib
 from bottle import app
-from buttervolume.plugin import jsonloads, SCHEDULE, SCHEDULE_LOG, SNAPSHOTS_PATH
+from buttervolume.plugin import jsonloads, SCHEDULE
+from buttervolume.plugin import SCHEDULE_LOG, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
 from threading import Timer
 from waitress import serve
@@ -71,7 +72,8 @@ def scheduled(args):
         ('http+unix://{}{}')
         .format(urllib.parse.quote_plus(SOCKET), urlpath))
     scheduled = get_from(resp, 'Schedule')
-    print('\n'.join(scheduled))
+    print('\n'.join(["{Action} {Timer} {Name}".format(**job)
+                     for job in scheduled]))
 
 
 def snapshots(args):

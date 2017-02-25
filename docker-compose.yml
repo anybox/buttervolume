@@ -1,7 +1,7 @@
 version: '2.1'
 services:
   plugin:
-    image: anybox/buttervolume
+    build: .
     restart: unless-stopped
     privileged: true
     volumes:
