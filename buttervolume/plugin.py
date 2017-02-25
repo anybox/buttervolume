@@ -129,9 +129,15 @@ def volume_send():
                             if s.startswith(volume_name) and s != volume_name])
     latest = all_snapshots[-2] if len(all_snapshots) > 1 else None
     parent = '-p {}'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
-    run('btrfs send {parent} "{snapshot_path}"'
-        ' | ssh \'{remote_host}\' "btrfs receive \'{remote_snapshots}\'"'
-        .format(**locals()), shell=True, check=True)
+    cmd = ('btrfs send {parent} "{snapshot_path}"'
+           ' | ssh \'{remote_host}\' "btrfs receive \'{remote_snapshots}\'"')
+    try:
+        run(cmd.format(**locals()), shell=True, check=True)
+    except:
+        logger.warn('Failed using parent %s. Sending full snapshot %s',
+                    latest, snapshot_path)
+        parent = ''
+        run(cmd.format(**locals()), shell=True, check=True)
     os.rename(snapshot_path, join(SNAPSHOTS_PATH, stamped_name))
     return json.dumps({'Err': '', 'Snapshot': stamped_name})
 
