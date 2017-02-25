@@ -94,6 +94,14 @@ def restore(args):
     print(get_from(resp, 'VolumeBackup'))
 
 
+def send(args):
+    resp = requests_unixsocket.Session().post(
+        'http+unix://{}/VolumeDriver.Snapshot.Send'
+        .format(urllib.parse.quote_plus(SOCKET)),
+        json.dumps({'Name': args.name}))
+    print(get_from(resp, ''))
+
+
 class Arg():
     def __init__(self, *a, **kw):
         for k, v in kw.items():
@@ -186,13 +194,22 @@ def main():
     parser_restore.add_argument(
         'name', metavar='name', nargs=1,
         help='Name of the snapshot to restore')
+    parser_send = subparsers.add_parser(
+        'send', help='Send a snapshot')
+    parser_schedule.add_argument(
+        'host', metavar='host', nargs=1,
+        help='Host to send the snapshot to')
+    parser_schedule.add_argument(
+        'snapshot', metavar='snapshot', nargs=1, type=int,
+        help='Snapshot to send')
 
+    parser_run.set_defaults(func=run)
     parser_snapshot.set_defaults(func=snapshot)
     parser_snapshots.set_defaults(func=snapshots)
     parser_schedule.set_defaults(func=schedule)
     parser_scheduled.set_defaults(func=scheduled)
     parser_restore.set_defaults(func=restore)
-    parser_run.set_defaults(func=run)
+    parser_send.set_defaults(func=send)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):

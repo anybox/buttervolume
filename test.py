@@ -140,29 +140,36 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
             f.write('foobar')
-        # send the volume (to the same host with another name)
-        resp = self.app.post('/VolumeDriver.Send', json.dumps({
-            'Name': name,
+        # snapshot
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snapshot = json.loads(resp.body.decode())['Snapshot']
+        snapshot_path = join(SNAPSHOTS_PATH, snapshot)
+        # send the snapshot (to the same host with another name)
+        self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
+            'Name': snapshot,
             'Host': 'localhost',
             'RemotePath': '/var/lib/docker/received'}))
-        snapshot = json.loads(resp.body.decode())['Snapshot']
         remote_path = join('/var/lib/docker/received', snapshot)
         # check the volumes have the same content
-        with open(join(path, 'foobar')) as x:
+        with open(join(snapshot_path, 'foobar')) as x:
             with open(join(remote_path, 'foobar')) as y:
                 self.assertEqual(x.read(), y.read())
         # change files in the master volume
         with open(join(path, 'foobar'), 'w') as f:
             f.write('changed foobar')
         # send again to the other volume
-        resp = self.app.post('/VolumeDriver.Send', json.dumps({
-            'Name': name,
+        resp = self.app.post('/VolumeDriver.Snapshot',
+                             json.dumps({'Name': name}))
+        snapshot2 = json.loads(resp.body.decode())['Snapshot']
+        snapshot2_path = join(SNAPSHOTS_PATH, snapshot2)
+        self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
+            'Name': snapshot2,
             'Host': 'localhost',
             'RemotePath': '/var/lib/docker/received'}))
-        snapshot2 = json.loads(resp.body.decode())['Snapshot']
         remote_path2 = join('/var/lib/docker/received', snapshot2)
         # check the files are the same
-        with open(join(path, 'foobar')) as x:
+        with open(join(snapshot2_path, 'foobar')) as x:
             with open(join(remote_path2, 'foobar')) as y:
                 self.assertEqual(x.read(), y.read())
         # check the second snapshot is a child of the first one

@@ -113,24 +113,21 @@ def volume_list():
                        'Err': ''})
 
 
-@route('/VolumeDriver.Send', ['POST'])
-def volume_send():
-    volume_name = jsonloads(request.body.read())['Name']
-    volume_path = join(VOLUMES_PATH, volume_name)
+@route('/VolumeDriver.Snapshot.Send', ['POST'])
+def snapshot_send():
+    snapshot_name = jsonloads(request.body.read())['Name']
+    snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     remote_host = jsonloads(request.body.read())['Host']
     remote_snapshots = jsonloads(
         request.body.read()).get('RemotePath', SNAPSHOTS_PATH)
-    timestamp = datetime.now().isoformat()
-    stamped_name = '{}@{}'.format(volume_name, timestamp)
-    snapshot_path = join(SNAPSHOTS_PATH, stamped_name)
-    btrfs.Subvolume(volume_path).snapshot(snapshot_path, readonly=True)
     # use the latest snapshot (if any) as a parent for the incremental send.
-    all_snapshots = sorted([s for s in os.listdir(SNAPSHOTS_PATH)
-                            if s.startswith(volume_name) and s != volume_name])
+    all_snapshots = sorted(
+        [s for s in os.listdir(SNAPSHOTS_PATH)
+         if s.startswith(snapshot_name.split('@')[0])])
     latest = all_snapshots[-2] if len(all_snapshots) > 1 else None
     parent = '-p {}'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
     cmd = ('btrfs send {parent} "{snapshot_path}"'
-           ' | ssh \'{remote_host}\' "btrfs receive \'{remote_snapshots}\'"')
+           ' | ssh {remote_host} "btrfs receive {remote_snapshots}"')
     try:
         run(cmd.format(**locals()), shell=True, check=True)
     except:
@@ -138,8 +135,7 @@ def volume_send():
                     latest, snapshot_path)
         parent = ''
         run(cmd.format(**locals()), shell=True, check=True)
-    os.rename(snapshot_path, join(SNAPSHOTS_PATH, stamped_name))
-    return json.dumps({'Err': '', 'Snapshot': stamped_name})
+    return json.dumps({'Err': ''})
 
 
 @route('/VolumeDriver.Snapshot', ['POST'])
