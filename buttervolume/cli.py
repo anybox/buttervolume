@@ -124,7 +124,7 @@ def send(args):
     resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Send'
         .format(urllib.parse.quote_plus(SOCKET)),
-        json.dumps({'Name': args.name}))
+        json.dumps({'Name': args.snapshot[0], 'Host': args.host[0]}))
     res = get_from(resp, '')
     if res:
         print(res)
@@ -228,7 +228,7 @@ def main():
         'host', metavar='host', nargs=1,
         help='Host to send the snapshot to')
     parser_send.add_argument(
-        'snapshot', metavar='snapshot', nargs=1, type=int,
+        'snapshot', metavar='snapshot', nargs=1,
         help='Snapshot to send')
 
     parser_run.set_defaults(func=run)

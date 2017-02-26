@@ -138,7 +138,10 @@ def snapshot_send():
         logger.warn('Failed using parent %s. Sending full snapshot %s',
                     latest, snapshot_path)
         parent = ''
-        run(cmd.format(**locals()), shell=True, check=True)
+        try:
+            run(cmd.format(**locals()), shell=True, check=True)
+        except Exception as e:
+            return json.dumps({'Err': str(e)})
     btrfs.Subvolume(snapshot_path).snapshot(
         '{}@{}'.format(snapshot_path, remote_host), readonly=True)
     for old_snapshot in sent_snapshots[:-1]:
