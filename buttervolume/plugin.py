@@ -222,18 +222,22 @@ def snapshot_restore():
     Snapshot a volume and overwrite it with the specified snapshot.
     """
     snapshot_name = jsonloads(request.body.read())['Name']
-    snapshot = btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot_name))
+    snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
+    snapshot = btrfs.Subvolume(snapshot_path)
     volume_name = snapshot_name.split('@')[0]
     volume_path = join(VOLUMES_PATH, volume_name)
     volume = btrfs.Subvolume(volume_path)
     res = {'Err': ''}
-    if volume.exists():
-        # backup and delete
-        timestamp = datetime.now().isoformat()
-        stamped_name = '{}@{}'.format(volume_name, timestamp)
-        stamped_path = join(SNAPSHOTS_PATH, stamped_name)
-        volume.snapshot(stamped_path, readonly=True)
-        res['VolumeBackup'] = stamped_name
-        volume.delete()
-    snapshot.snapshot(volume_path)
+    if snapshot.exists():
+        if volume.exists():
+            # backup and delete
+            timestamp = datetime.now().isoformat()
+            stamped_name = '{}@{}'.format(volume_name, timestamp)
+            stamped_path = join(SNAPSHOTS_PATH, stamped_name)
+            volume.snapshot(stamped_path, readonly=True)
+            res['VolumeBackup'] = stamped_name
+            volume.delete()
+        snapshot.snapshot(volume_path)
+    else:
+        res['Err'] = 'No such snapshot'
     return json.dumps(res)

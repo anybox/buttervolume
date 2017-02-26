@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import requests_unixsocket
+from requests.exceptions import ConnectionError
 import sys
 import urllib
 from bottle import app
@@ -20,6 +21,29 @@ TIMER = 60
 app = app()
 
 
+class Session(object):
+    """wrapper for requests_unixsocket.Session
+    """
+    def __init__(self):
+        self.session = requests_unixsocket.Session()
+
+    def post(self, *a, **kw):
+        try:
+            return self.session.post(*a, **kw)
+        except ConnectionError:
+            logger.error('Failed to connect to Buttervolume. '
+                         'You can start it with: buttervolume run')
+            sys.exit(1)
+
+    def get(self, *a, **kw):
+        try:
+            return self.session.get(*a, **kw)
+        except ConnectionError:
+            logger.error('Failed to connect to Buttervolume. '
+                         'You can start it with: buttervolume run')
+            sys.exit(1)
+
+
 def get_from(resp, key):
     """get specified key from plugin response output
     """
@@ -28,13 +52,12 @@ def get_from(resp, key):
     except:  # TestApp
         content = resp.body
     if resp.status_code != 200:
-        print('Error {}: {}'.format(resp.status_code, resp.reason),
-              file=sys.stderr)
+        logger.error('%s: %s', resp.status_code, resp.reason)
         return None
     else:
         error = jsonloads(content)['Err']
         if error:
-            print(error, file=sys.stderr)
+            logger.error(error)
             return None
     return jsonloads(content).get(key)
 
@@ -45,11 +68,13 @@ def snapshot(args, test=False):
     if test:
         resp = TestApp(app).post(urlpath, param)
     else:
-        resp = requests_unixsocket.Session().post(
+        resp = Session().post(
             ('http+unix://{}{}')
             .format(urllib.parse.quote_plus(SOCKET), urlpath),
             param)
-    return get_from(resp, 'Snapshot') or sys.exit(1)
+    res = get_from(resp, 'Snapshot') or sys.exit(1)
+    if res:
+        print(res)
 
 
 def schedule(args):
@@ -58,16 +83,15 @@ def schedule(args):
         'Name': args.name[0],
         'Action': args.action[0],
         'Timer': args.timer[0]})
-    requests_unixsocket.Session().post(
-        ('http+unix://{}{}')
-        .format(urllib.parse.quote_plus(SOCKET), urlpath),
-        param)
+    Session().post(
+        'http+unix://{}{}'
+        .format(urllib.parse.quote_plus(SOCKET), urlpath), param)
 
 
 def scheduled(args):
     urlpath = '/VolumeDriver.Schedule.List'
-    resp = requests_unixsocket.Session().get(
-        ('http+unix://{}{}')
+    resp = Session().get(
+        'http+unix://{}{}'
         .format(urllib.parse.quote_plus(SOCKET), urlpath))
     scheduled = get_from(resp, 'Schedule')
     print('\n'.join(["{Action} {Timer} {Name}".format(**job)
@@ -75,7 +99,7 @@ def scheduled(args):
 
 
 def snapshots(args):
-    resp = requests_unixsocket.Session().post(
+    resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.List'
         .format(urllib.parse.quote_plus(SOCKET)),
         json.dumps({'Name': args.name}))
@@ -87,19 +111,23 @@ def snapshots(args):
 
 
 def restore(args):
-    resp = requests_unixsocket.Session().post(
+    resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Restore'
         .format(urllib.parse.quote_plus(SOCKET)),
         json.dumps({'Name': args.name[0]}))
-    print(get_from(resp, 'VolumeBackup'))
+    res = get_from(resp, 'VolumeBackup')
+    if res:
+        print(res)
 
 
 def send(args):
-    resp = requests_unixsocket.Session().post(
+    resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Send'
         .format(urllib.parse.quote_plus(SOCKET)),
         json.dumps({'Name': args.name}))
-    print(get_from(resp, ''))
+    res = get_from(resp, '')
+    if res:
+        print(res)
 
 
 class Arg():
