@@ -196,10 +196,10 @@ def main():
         help='Name of the snapshot to restore')
     parser_send = subparsers.add_parser(
         'send', help='Send a snapshot')
-    parser_schedule.add_argument(
+    parser_send.add_argument(
         'host', metavar='host', nargs=1,
         help='Host to send the snapshot to')
-    parser_schedule.add_argument(
+    parser_send.add_argument(
         'snapshot', metavar='snapshot', nargs=1, type=int,
         help='Snapshot to send')
 
