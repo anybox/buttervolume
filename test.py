@@ -149,6 +149,7 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
             'Name': snapshot,
             'Host': 'localhost',
+            'Test': True,
             'RemotePath': '/var/lib/docker/received'}))
         remote_path = join('/var/lib/docker/received', snapshot)
         # check the volumes have the same content
@@ -166,6 +167,7 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
             'Name': snapshot2,
             'Host': 'localhost',
+            'Test': True,
             'RemotePath': '/var/lib/docker/received'}))
         remote_path2 = join('/var/lib/docker/received', snapshot2)
         # check the files are the same
@@ -206,7 +208,7 @@ class TestCase(unittest.TestCase):
                 self.assertEqual(x.read(), y.read())
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Snapshot.Destroy',
+        self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snapshot}))
 
     def test_snapshots(self):
@@ -250,13 +252,13 @@ class TestCase(unittest.TestCase):
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
-        self.app.post('/VolumeDriver.Snapshot.Destroy',
+        self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snap1}))
-        self.app.post('/VolumeDriver.Snapshot.Destroy',
+        self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snap2}))
-        self.app.post('/VolumeDriver.Snapshot.Destroy',
+        self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snap3}))
-        self.app.post('/VolumeDriver.Snapshot.Destroy',
+        self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snap4}))
 
     def test_schedule(self):
@@ -329,7 +331,7 @@ class TestCase(unittest.TestCase):
         # clean up
         for snap in os.listdir(SNAPSHOTS_PATH):
             if snap.startswith(name) or snap.startswith(name2):
-                self.app.post('/VolumeDriver.Snapshot.Destroy',
+                self.app.post('/VolumeDriver.Snapshot.Remove',
                               json.dumps({'Name': snap}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))

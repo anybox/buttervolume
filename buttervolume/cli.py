@@ -130,8 +130,8 @@ def send(args):
         print(res)
 
 
-def delete(args):
-    urlpath = '/VolumeDriver.Snapshot.Delete'
+def remove(args):
+    urlpath = '/VolumeDriver.Snapshot.Remove'
     param = json.dumps({'Name': args.name[0]})
     resp = Session().post(
         ('http+unix://{}{}')
@@ -242,9 +242,9 @@ def main():
     parser_send.add_argument(
         'snapshot', metavar='snapshot', nargs=1,
         help='Snapshot to send')
-    parser_delete = subparsers.add_parser(
-        'delete', help='Delete a snapshot')
-    parser_delete.add_argument(
+    parser_remove = subparsers.add_parser(
+        'rm', help='Delete a snapshot')
+    parser_remove.add_argument(
         'name', metavar='name', nargs=1, help='Name of the snapshot to delete')
 
     parser_run.set_defaults(func=run)
@@ -254,7 +254,7 @@ def main():
     parser_scheduled.set_defaults(func=scheduled)
     parser_restore.set_defaults(func=restore)
     parser_send.set_defaults(func=send)
-    parser_delete.set_defaults(func=delete)
+    parser_remove.set_defaults(func=remove)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):

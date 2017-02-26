@@ -117,6 +117,7 @@ def volume_list():
 def snapshot_send():
     """The last sent snapshot is remembered by adding a suffix with the target
     """
+    test = jsonloads(request.body.read()).get('Test', False)
     snapshot_name = jsonloads(request.body.read())['Name']
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     remote_host = jsonloads(request.body.read())['Host']
@@ -130,8 +131,11 @@ def snapshot_send():
     if latest and len(latest.rsplit('@')) == 3:
         latest = latest.rsplit('@', 1)[0]
     parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
+    port = '-p 1122'
+    if test:
+        port = ''
     cmd = ('btrfs send {parent} "{snapshot_path}"'
-           ' | ssh -p 1122 {remote_host} "btrfs receive {remote_snapshots}"')
+           ' | ssh {port} {remote_host} "btrfs receive {remote_snapshots}"')
     try:
         run(cmd.format(**locals()), shell=True, check=True)
     except:
@@ -175,7 +179,7 @@ def snapshot_list():
     return json.dumps({'Err': '', 'Snapshots': snapshots})
 
 
-@route('/VolumeDriver.Snapshot.Delete', ['POST'])
+@route('/VolumeDriver.Snapshot.Remove', ['POST'])
 def snapshot_delete():
     name = jsonloads(request.body.read())['Name']
     path = join(SNAPSHOTS_PATH, name)
