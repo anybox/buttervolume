@@ -10,17 +10,17 @@ RUN set -x; \
         python3-setuptools \
         ssh \
         unzip \
-    && update-rc.d ssh enable \
-    && curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/master.zip \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /run/docker/plugins
+
+RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/master.zip \
     && unzip buttervolume.zip \
     && rm buttervolume.zip \
     && mv buttervolume-master buttervolume \
     && cd buttervolume \
     && python3 setup.py install \
     && cd .. \
-    && rm -rf buttervolume \
-    && mkdir -p /run/docker/plugins \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf buttervolume
 
 VOLUME /etc/buttervolume
 COPY entrypoint.sh /

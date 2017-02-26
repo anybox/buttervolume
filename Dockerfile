@@ -8,16 +8,17 @@ RUN set -x; \
         ca-certificates \
         python3-setuptools \
         ssh \
-    && update-rc.d ssh enable
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /run/docker/plugins
 
 COPY . /buttervolume
 RUN cd /buttervolume \
     && python3 setup.py install \
     && cd .. \
-    && rm -rf buttervolume \
-    && mkdir -p /run/docker/plugins \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf buttervolume
+
 
 VOLUME /etc/buttervolume
-ENTRYPOINT service ssh start \&\& buttervolume
+COPY entrypoint.sh /
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["run"]
