@@ -175,11 +175,17 @@ def snapshot_list():
     return json.dumps({'Err': '', 'Snapshots': snapshots})
 
 
-@route('/VolumeDriver.Snapshot.Destroy', ['POST'])
-def snapshot_destroy():
+@route('/VolumeDriver.Snapshot.Delete', ['POST'])
+def snapshot_delete():
     name = jsonloads(request.body.read())['Name']
     path = join(SNAPSHOTS_PATH, name)
-    btrfs.Subvolume(path).delete()
+    if not os.path.exists(path):
+        return json.dumps({'Err': 'No such snapshot'})
+    try:
+        btrfs.Subvolume(path).delete()
+    except Exception as e:
+        return {'Err': str(e)}
+    return json.dumps({'Err': ''})
 
 
 @route('/VolumeDriver.Schedule', ['POST'])
