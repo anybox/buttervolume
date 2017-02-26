@@ -11,7 +11,8 @@ RUN set -x; \
         ssh \
         unzip \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /run/docker/plugins
+    && mkdir -p /run/docker/plugins \
+    && echo "Port 1122" >> /etc/ssh/sshd_config
 
 RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/master.zip \
     && unzip buttervolume.zip \
