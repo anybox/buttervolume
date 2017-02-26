@@ -177,6 +177,10 @@ class TestCase(unittest.TestCase):
                          btrfs.Subvolume(remote_path2).show()['Parent UUID'])
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        btrfs.Subvolume(join('/var/lib/docker/snapshots',
+                             snapshot + '@localhost')).delete()
+        btrfs.Subvolume(join('/var/lib/docker/snapshots',
+                             snapshot2 + '@localhost')).delete()
         btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot)).delete()
         btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot2)).delete()
         btrfs.Subvolume(join('/var/lib/docker/received', snapshot)).delete()

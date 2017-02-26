@@ -115,17 +115,21 @@ def volume_list():
 
 @route('/VolumeDriver.Snapshot.Send', ['POST'])
 def snapshot_send():
+    """The last sent snapshot is remembered by adding a suffix with the target
+    """
     snapshot_name = jsonloads(request.body.read())['Name']
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     remote_host = jsonloads(request.body.read())['Host']
     remote_snapshots = jsonloads(
         request.body.read()).get('RemotePath', SNAPSHOTS_PATH)
-    # use the latest snapshot (if any) as a parent for the incremental send.
-    all_snapshots = sorted(
+    # take the latest snapshot suffixed with the target host
+    sent_snapshots = sorted(
         [s for s in os.listdir(SNAPSHOTS_PATH)
-         if s.startswith(snapshot_name.split('@')[0])])
-    latest = all_snapshots[-2] if len(all_snapshots) > 1 else None
-    parent = '-p {}'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
+         if len(s.split('@')) == 3 and s.split('@')[2] == remote_host])
+    latest = sent_snapshots[-1] if len(sent_snapshots) > 0 else None
+    if latest and len(latest.rsplit('@')) == 3:
+        latest = latest.rsplit('@', 1)[0]
+    parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
     cmd = ('btrfs send {parent} "{snapshot_path}"'
            ' | ssh {remote_host} "btrfs receive {remote_snapshots}"')
     try:
@@ -135,6 +139,10 @@ def snapshot_send():
                     latest, snapshot_path)
         parent = ''
         run(cmd.format(**locals()), shell=True, check=True)
+    btrfs.Subvolume(snapshot_path).snapshot(
+        '{}@{}'.format(snapshot_path, remote_host), readonly=True)
+    for old_snapshot in sent_snapshots[:-1]:
+        btrfs.Subvolume(old_snapshot).delete
     return json.dumps({'Err': ''})
 
 
