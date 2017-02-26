@@ -131,7 +131,7 @@ def snapshot_send():
         latest = latest.rsplit('@', 1)[0]
     parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
     cmd = ('btrfs send {parent} "{snapshot_path}"'
-           ' | ssh {remote_host} "btrfs receive {remote_snapshots}"')
+           ' | ssh -p 1122 {remote_host} "btrfs receive {remote_snapshots}"')
     try:
         run(cmd.format(**locals()), shell=True, check=True)
     except:
