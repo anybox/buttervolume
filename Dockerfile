@@ -6,7 +6,9 @@ RUN set -x; \
     && apt-get install -y --no-install-recommends \
         btrfs-progs \
         ca-certificates \
-        python3-setuptools
+        python3-setuptools \
+        ssh \
+    && update-rc.d ssh enable
 
 COPY . /buttervolume
 RUN cd /buttervolume \
@@ -17,5 +19,5 @@ RUN cd /buttervolume \
     && rm -rf /var/lib/apt/lists/*
 
 VOLUME /etc/buttervolume
-ENTRYPOINT ["buttervolume"]
+ENTRYPOINT service ssh start \&\& buttervolume
 CMD ["run"]
