@@ -6,7 +6,8 @@ import tempfile
 from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
-from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, jsonloads
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
+from buttervolume.plugin import jsonloads, TEST_RECEIVE_PATH
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output
@@ -149,9 +150,8 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
             'Name': snapshot,
             'Host': 'localhost',
-            'Test': True,
-            'RemotePath': '/var/lib/docker/received'}))
-        remote_path = join('/var/lib/docker/received', snapshot)
+            'Test': True}))
+        remote_path = join(TEST_RECEIVE_PATH, snapshot)
         # check the volumes have the same content
         with open(join(snapshot_path, 'foobar')) as x:
             with open(join(remote_path, 'foobar')) as y:
@@ -167,9 +167,8 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Snapshot.Send', json.dumps({
             'Name': snapshot2,
             'Host': 'localhost',
-            'Test': True,
-            'RemotePath': '/var/lib/docker/received'}))
-        remote_path2 = join('/var/lib/docker/received', snapshot2)
+            'Test': True}))
+        remote_path2 = join(TEST_RECEIVE_PATH, snapshot2)
         # check the files are the same
         with open(join(snapshot2_path, 'foobar')) as x:
             with open(join(remote_path2, 'foobar')) as y:
@@ -179,14 +178,14 @@ class TestCase(unittest.TestCase):
                          btrfs.Subvolume(remote_path2).show()['Parent UUID'])
         # clean up
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        btrfs.Subvolume(join('/var/lib/docker/snapshots',
+        btrfs.Subvolume(join(SNAPSHOTS_PATH,
                              snapshot + '@localhost')).delete()
-        btrfs.Subvolume(join('/var/lib/docker/snapshots',
+        btrfs.Subvolume(join(SNAPSHOTS_PATH,
                              snapshot2 + '@localhost')).delete()
-        btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot)).delete()
-        btrfs.Subvolume(join('/var/lib/docker/snapshots', snapshot2)).delete()
-        btrfs.Subvolume(join('/var/lib/docker/received', snapshot)).delete()
-        btrfs.Subvolume(join('/var/lib/docker/received', snapshot2)).delete()
+        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
+        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot2)).delete()
+        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshot)).delete()
+        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshot2)).delete()
 
     def test_snapshot(self):
         """Check we can snapshot a volume
@@ -261,7 +260,7 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Snapshot.Remove',
                       json.dumps({'Name': snap4}))
 
-    def test_schedule(self):
+    def test_schedule_snapshot(self):
         """check we can schedule actions such as snapshots
         """
         # create a volume with a file
@@ -297,9 +296,8 @@ class TestCase(unittest.TestCase):
         # run the scheduler
         scheduler(SCHEDULE, test=True)
         # check we have two snapshots
-        snaps = os.listdir(SNAPSHOTS_PATH)
         self.assertEqual(
-            2, len({s for s in snaps
+            2, len({s for s in os.listdir(SNAPSHOTS_PATH)
                     if s.startswith(name) or s.startswith(name2)}))
         # unschedule
         self.app.post('/VolumeDriver.Schedule', json.dumps(
@@ -315,9 +313,8 @@ class TestCase(unittest.TestCase):
         SCHEDULE_LOG['snapshot'][name2] = datetime.now() - timedelta(1)
         # run the scheduler and check we only have one more snapshot
         scheduler(SCHEDULE, test=True)
-        snaps = os.listdir(SNAPSHOTS_PATH)
         self.assertEqual(
-            3, len({s for s in snaps
+            3, len({s for s in os.listdir(SNAPSHOTS_PATH)
                     if s.startswith(name) or s.startswith(name2)}))
         # unschedule the last job
         self.app.post('/VolumeDriver.Schedule', json.dumps(
@@ -335,6 +332,50 @@ class TestCase(unittest.TestCase):
                               json.dumps({'Name': snap}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
+
+    def test_schedule_replicate(self):
+        # create a volume with a file
+        name = 'buttervolume-test-' + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # check we have no schedule
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 0)
+        # check we have no snapshots
+        resp = self.app.post('/VolumeDriver.Snapshot.List', json.dumps({}))
+        snapshots = json.loads(resp.body.decode())['Snapshots']
+        self.assertEqual(len(snapshots), 0)
+        # replicate the volume every 120 minutes
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'replicate:localhost', 'Timer': 120}))
+        # simulate we spent more time
+        SCHEDULE_LOG.setdefault('replicate:localhost', {})
+        SCHEDULE_LOG['replicate:localhost'
+                     ][name] = datetime.now() - timedelta(1)
+        # run the scheduler and check we only have two more snapshots
+        scheduler(SCHEDULE, test=True)
+        self.assertEqual(
+            2, len({s for s in os.listdir(SNAPSHOTS_PATH)
+                    if s.startswith(name) or s.startswith(name)}))
+        self.assertEqual(
+            1, len({s for s in os.listdir(TEST_RECEIVE_PATH)
+                    if s.startswith(name) or s.startswith(name)}))
+        # unschedule the last job
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'replicate:localhost', 'Timer': 0}))
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        # clean up
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+        resp = self.app.post('/VolumeDriver.Snapshot.List', json.dumps({}))
+        snapshots = sorted(json.loads(resp.body.decode())['Snapshots'])
+        self.app.post('/VolumeDriver.Snapshot.Remove',
+                      json.dumps({'Name': snapshots[0]}))
+        self.app.post('/VolumeDriver.Snapshot.Remove',
+                      json.dumps({'Name': snapshots[1]}))
+        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshots[0])).delete()
 
     def test_restore(self):
         """ Check we can restore a snapshot as a volume

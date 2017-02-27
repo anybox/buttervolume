@@ -69,12 +69,13 @@ def snapshot(args, test=False):
         resp = TestApp(app).post(urlpath, param)
     else:
         resp = Session().post(
-            ('http+unix://{}{}')
+            'http+unix://{}{}'
             .format(urllib.parse.quote_plus(SOCKET), urlpath),
             param)
     res = get_from(resp, 'Snapshot') or sys.exit(1)
     if res:
         print(res)
+        return res
 
 
 def schedule(args):
@@ -118,13 +119,20 @@ def restore(args):
     res = get_from(resp, 'VolumeBackup')
     if res:
         print(res)
+        return res
 
 
-def send(args):
-    resp = Session().post(
-        'http+unix://{}/VolumeDriver.Snapshot.Send'
-        .format(urllib.parse.quote_plus(SOCKET)),
-        json.dumps({'Name': args.snapshot[0], 'Host': args.host[0]}))
+def send(args, test=False):
+    urlpath = '/VolumeDriver.Snapshot.Send'
+    param = {'Name': args.snapshot[0], 'Host': args.host[0]}
+    if test:
+        param['Test'] = True
+        resp = TestApp(app).post(urlpath, json.dumps(param))
+    else:
+        resp = Session().post(
+            'http+unix://{}{}'
+            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            json.dumps(param))
     res = get_from(resp, '')
     if res:
         print(res)
@@ -167,6 +175,7 @@ def scheduler(config=SCHEDULE, test=False):
                 name, action, timer = line
                 now = datetime.now()
                 # just starting, we consider beeing late on snapshots
+                SCHEDULE_LOG.setdefault(action, {})
                 SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
                 last = SCHEDULE_LOG[action][name]
                 if now < last + timedelta(minutes=int(timer)):
@@ -177,9 +186,17 @@ def scheduler(config=SCHEDULE, test=False):
                 # choose and run the right action
                 if action == "snapshot":
                     logger.info("Running scheduled snapshot of %s", name)
-                    path = snapshot(Arg(name=[name]), test=test)
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    logger.info("Successfully snapshotted to %s", snap)
                     SCHEDULE_LOG[action][name] = now
-                    logger.info("Successfully snapshotted to %s", path)
+                if action.startswith('replicate:'):
+                    action, host = action.split(':')
+                    logger.info("Running scheduled replication of %s", name)
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    logger.info("Successfully snapshotted to %s", snap)
+                    send(Arg(snapshot=[snap], host=[host]), test=test)
+                    logger.info("Successfully replicated %s to %s", name, snap)
+                    SCHEDULE_LOG[action][name] = now
             except Exception as e:
                 logger.error('Error processing scheduler action file %s '
                              'name=%s, action=%s, timer=%s\n%s',
@@ -217,10 +234,10 @@ def main():
         'name', metavar='name', nargs='?',
         help='Name of the volume to list related snapshots')
     parser_schedule = subparsers.add_parser(
-        'schedule', help='(un)Schedule a snapshot')
+        'schedule', help='(un)Schedule a snapshot or replication')
     parser_schedule.add_argument(
         'action', metavar='action', nargs=1,
-        help='Name of the action to schedule (snapshot)')
+        help='Name of the action to schedule (snapshot, replicate:<host>)')
     parser_schedule.add_argument(
         'timer', metavar='timer', nargs=1, type=int,
         help='Time span in minutes between two actions')
@@ -235,7 +252,7 @@ def main():
         'name', metavar='name', nargs=1,
         help='Name of the snapshot to restore')
     parser_send = subparsers.add_parser(
-        'send', help='Send a snapshot')
+        'send', help='Send a snapshot to another host')
     parser_send.add_argument(
         'host', metavar='host', nargs=1,
         help='Host to send the snapshot to')

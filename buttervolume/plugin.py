@@ -14,8 +14,9 @@ logger = logging.getLogger()
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
+TEST_RECEIVE_PATH = "/var/lib/docker/received/"
 SCHEDULE = "/etc/buttervolume/schedule.csv"
-SCHEDULE_LOG = {'snapshot': {}, 'send': {}}
+SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}}
 
 
 def jsonloads(stuff):
@@ -121,8 +122,7 @@ def snapshot_send():
     snapshot_name = jsonloads(request.body.read())['Name']
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     remote_host = jsonloads(request.body.read())['Host']
-    remote_snapshots = jsonloads(
-        request.body.read()).get('RemotePath', SNAPSHOTS_PATH)
+    remote_snapshots = SNAPSHOTS_PATH if not test else TEST_RECEIVE_PATH
     # take the latest snapshot suffixed with the target host
     sent_snapshots = sorted(
         [s for s in os.listdir(SNAPSHOTS_PATH)
@@ -131,11 +131,11 @@ def snapshot_send():
     if latest and len(latest.rsplit('@')) == 3:
         latest = latest.rsplit('@', 1)[0]
     parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
-    port = '-p 1122'
-    if test:
-        port = ''
+    port = '1122'
+    if test:  # I currently run tests outside docker
+        port = '22'
     cmd = ('btrfs send {parent} "{snapshot_path}"'
-           ' | ssh {port} {remote_host} "btrfs receive {remote_snapshots}"')
+           ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"')
     try:
         run(cmd.format(**locals()), shell=True, check=True)
     except:
