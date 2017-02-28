@@ -214,7 +214,7 @@ def run(args):
     print('Starting scheduler job every {}s'.format(TIMER))
     Timer(1, scheduler).start()
     # listen to requests
-    serve(app, unix_socket=SOCKET)
+    serve(app, unix_socket=SOCKET, unix_socket_perms='660')
 
 
 def main():
