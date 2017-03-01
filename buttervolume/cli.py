@@ -161,6 +161,9 @@ def scheduler(config=SCHEDULE, test=False):
     WARNING: this should be guaranteed against runtime errors
     otherwise the next scheduler won't run
     """
+    # immediately schedule the next run
+    if not test:  # run only once
+        Timer(TIMER, scheduler).start()
     # open the config and launch the tasks
     if not os.path.exists(config):
         logger.warn('No config file %s', config)
@@ -201,9 +204,6 @@ def scheduler(config=SCHEDULE, test=False):
                 logger.error('Error processing scheduler action file %s '
                              'name=%s, action=%s, timer=%s\n%s',
                              config, name, action, timer, str(e))
-    # schedule the next run
-    if not test:  # run only once
-        Timer(TIMER, scheduler).start()
 
 
 def run(args):
