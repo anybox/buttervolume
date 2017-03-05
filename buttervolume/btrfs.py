@@ -35,8 +35,11 @@ class Subvolume(object):
         return run('btrfs subvolume snapshot {} "{}" "{}"'
                    .format(r, self.path, target))
 
-    def create(self):
-        return run('btrfs subvolume create "{}"'.format(self.path))
+    def create(self, cow=False):
+        out = run('btrfs subvolume create "{}"'.format(self.path))
+        if not cow:
+            run('chattr +C "{}"'.format(self.path))
+        return out
 
     def delete(self):
         return run('btrfs subvolume delete "{}"'.format(self.path))
