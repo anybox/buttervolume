@@ -109,7 +109,6 @@ def volume_list():
         try:
             btrfs.Subvolume(p).show()
         except Exception as e:
-            logger.info(e)
             continue
         volumes.append(p)
     return json.dumps({'Volumes': [{'Name': basename(v)} for v in volumes],
