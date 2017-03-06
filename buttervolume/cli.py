@@ -201,7 +201,7 @@ def scheduler(config=SCHEDULE, test=False):
                 logger.error('Error processing scheduler action file %s '
                              'name=%s, action=%s, timer=%s\n%s',
                              config, name, action, timer, str(e))
-    # immediately schedule the next run
+    # schedule the next run
     if not test:  # run only once
         Timer(TIMER, scheduler).start()
 
@@ -232,7 +232,7 @@ def main():
         'snapshots', help='List snapshots')
     parser_snapshots.add_argument(
         'name', metavar='name', nargs='?',
-        help='Name of the volume to list related snapshots')
+        help='Name of the volume whose snapshots are to list')
     parser_schedule = subparsers.add_parser(
         'schedule', help='(un)Schedule a snapshot or replication')
     parser_schedule.add_argument(
@@ -243,14 +243,15 @@ def main():
         help='Time span in minutes between two actions')
     parser_schedule.add_argument(
         'name', metavar='name', nargs=1,
-        help='Name of the volume to schedule snapshots')
+        help='Name of the volume whose snapshots are to schedule')
     parser_scheduled = subparsers.add_parser(
         'scheduled', help='List scheduled actions')
     parser_restore = subparsers.add_parser(
         'restore', help='Restore a snapshot')
     parser_restore.add_argument(
         'name', metavar='name', nargs=1,
-        help='Name of the snapshot to restore')
+        help=('Name of the snapshot to restore '
+              '(use the name of the volume to restore the latest snapshot)'))
     parser_send = subparsers.add_parser(
         'send', help='Send a snapshot to another host')
     parser_send.add_argument(

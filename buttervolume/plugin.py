@@ -31,6 +31,8 @@ def plugin_activate():
 @route('/VolumeDriver.Create', ['POST'])
 def volume_create():
     name = jsonloads(request.body.read())['Name']
+    if '@' in name:
+        return json.dumps({'Err': '"@" is illegal in the name of the volume'})
     volpath = join(VOLUMES_PATH, name)
     # volume already exists?
     if name in [v['Name']for v in json.loads(volume_list())['Volumes']]:
@@ -235,6 +237,12 @@ def snapshot_restore():
     Snapshot a volume and overwrite it with the specified snapshot.
     """
     snapshot_name = jsonloads(request.body.read())['Name']
+    if '@' not in snapshot_name:
+        # we're passing the name of the volume. Use the latest snapshot.
+        volume_name = snapshot_name
+        snapshots = os.listdir(SNAPSHOTS_PATH)
+        snapshots = [s for s in snapshots if s.startswith(volume_name + '@')]
+        snapshot_name = sorted(snapshots)[-1]
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     snapshot = btrfs.Subvolume(snapshot_path)
     volume_name = snapshot_name.split('@')[0]
