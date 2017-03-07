@@ -53,12 +53,12 @@ def get_from(resp, key):
         content = resp.body
     if resp.status_code != 200:
         logger.error('%s: %s', resp.status_code, resp.reason)
-        return None
+        sys.exit(1)
     else:
         error = jsonloads(content)['Err']
         if error:
             logger.error(error)
-            return None
+            sys.exit(1)
     return jsonloads(content).get(key)
 
 
