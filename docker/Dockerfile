@@ -14,10 +14,11 @@ RUN set -x; \
     && mkdir -p /run/docker/plugins \
     && echo "Port 1122" >> /etc/ssh/sshd_config
 
-RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/master.zip \
+ENV VERSION master
+RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/${VERSION}.zip \
     && unzip buttervolume.zip \
     && rm buttervolume.zip \
-    && mv buttervolume-master buttervolume \
+    && mv buttervolume-${VERSION} buttervolume \
     && cd buttervolume \
     && python3 setup.py install \
     && cd .. \

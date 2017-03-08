@@ -7,7 +7,7 @@ from buttervolume import btrfs
 from datetime import datetime
 from os.path import join, basename, exists, dirname
 from subprocess import check_call
-from subprocess import run
+from subprocess import run, PIPE
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
@@ -137,16 +137,19 @@ def snapshot_send():
     port = '1122'
     if test:  # I currently run tests outside docker
         port = '22'
+    run('sync', shell=True)  # needed by a current issue with send
     cmd = ('btrfs send {parent} "{snapshot_path}"'
            ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"')
     try:
-        run(cmd.format(**locals()), shell=True, check=True)
+        run(cmd.format(**locals()),
+            shell=True, check=True, stdout=PIPE, stderr=PIPE)
     except:
         logger.warn('Failed using parent %s. Sending full snapshot %s',
                     latest, snapshot_path)
         parent = ''
         try:
-            run(cmd.format(**locals()), shell=True, check=True)
+            run(cmd.format(**locals()),
+                shell=True, check=True, stdout=PIPE, stderr=PIPE)
         except Exception as e:
             return json.dumps({'Err': str(e)})
     btrfs.Subvolume(snapshot_path).snapshot(
