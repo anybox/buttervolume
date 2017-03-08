@@ -9,7 +9,7 @@ from os.path import join, basename, exists, dirname
 from subprocess import check_call
 from subprocess import run, PIPE
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger()
+log = logging.getLogger()
 
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
@@ -51,7 +51,7 @@ def volume_mount():
     if exists(join(path, '_data', '.nocow')) or exists(join(path, '.nocow')):
         try:
             check_call("chattr +C '{}'".format(join(path)), shell=True)
-            logger.info("disabled COW on %s", path)
+            log.info("disabled COW on %s", path)
         except Exception as e:
             return json.dumps(
                 {'Err': 'could not disable COW on {}'.format(path)})
@@ -141,13 +141,15 @@ def snapshot_send():
     cmd = ('btrfs send {parent} "{snapshot_path}"'
            ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"')
     try:
+        log.info(cmd.format(**locals()))
         run(cmd.format(**locals()),
             shell=True, check=True, stdout=PIPE, stderr=PIPE)
     except:
-        logger.warn('Failed using parent %s. Sending full snapshot %s',
-                    latest, snapshot_path)
+        log.warn('Failed using parent %s. Sending full snapshot %s',
+                 latest, snapshot_path)
         parent = ''
         try:
+            log.info(cmd.format(**locals()))
             run(cmd.format(**locals()),
                 shell=True, check=True, stdout=PIPE, stderr=PIPE)
         except Exception as e:
