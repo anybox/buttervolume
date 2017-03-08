@@ -8,7 +8,7 @@ from datetime import datetime
 from os.path import join, basename, exists, dirname
 from subprocess import check_call
 from subprocess import run, PIPE
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
 # absolute path to the volumes
@@ -154,7 +154,7 @@ def snapshot_send():
             return json.dumps({'Err': str(e)})
     btrfs.Subvolume(snapshot_path).snapshot(
         '{}@{}'.format(snapshot_path, remote_host), readonly=True)
-    for old_snapshot in sent_snapshots[:-1]:
+    for old_snapshot in sent_snapshots:
         btrfs.Subvolume(old_snapshot).delete
     return json.dumps({'Err': ''})
 
