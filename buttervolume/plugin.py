@@ -248,6 +248,8 @@ def snapshot_restore():
         volume_name = snapshot_name
         snapshots = os.listdir(SNAPSHOTS_PATH)
         snapshots = [s for s in snapshots if s.startswith(volume_name + '@')]
+        if not snapshots:
+            return {'Err': ''}
         snapshot_name = sorted(snapshots)[-1]
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     snapshot = btrfs.Subvolume(snapshot_path)
