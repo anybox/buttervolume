@@ -52,7 +52,7 @@ def volume_mount():
         try:
             check_call("chattr +C '{}'".format(join(path)), shell=True)
             log.info("disabled COW on %s", path)
-        except Exception as e:
+        except Exception:
             return json.dumps(
                 {'Err': 'could not disable COW on {}'.format(path)})
     if exists(join(path, '_data', '.nocow')):
@@ -68,7 +68,7 @@ def volume_path():
     path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).show()
-    except Exception as e:
+    except Exception:
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps({'Mountpoint': path, 'Err': ''})
 
@@ -84,7 +84,7 @@ def volume_get():
     path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).show()
-    except Exception as e:
+    except Exception:
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps(
         {'Volume': {'Name': name, 'Mountpoint': path}, 'Err': ''})
@@ -96,7 +96,7 @@ def volume_remove():
     path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).delete()
-    except Exception as e:
+    except Exception:
         return json.dumps({'Err': '{}: no such volume'.format(name)})
     return json.dumps({'Err': ''})
 
@@ -108,7 +108,7 @@ def volume_list():
               if v != 'metadata.db']:
         try:
             btrfs.Subvolume(p).show()
-        except Exception as e:
+        except Exception:
             continue
         volumes.append(p)
     return json.dumps({'Volumes': [{'Name': basename(v)} for v in volumes],
@@ -149,6 +149,11 @@ def snapshot_send():
                  latest, snapshot_path)
         parent = ''
         try:
+            rmcmd = (
+                'ssh -p {port} {remote_host} '
+                '"btrfs subvolume delete {remote_snapshots}/{snapshot_name}')
+            log.info(cmd.format(**locals()))
+            run(rmcmd.format(**locals()), shell=True, stdout=PIPE, stderr=PIPE)
             log.info(cmd.format(**locals()))
             run(cmd.format(**locals()),
                 shell=True, check=True, stdout=PIPE, stderr=PIPE)
