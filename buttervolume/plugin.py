@@ -151,8 +151,8 @@ def snapshot_send():
         try:
             rmcmd = (
                 'ssh -p {port} {remote_host} '
-                '"btrfs subvolume delete {remote_snapshots}/{snapshot_name}')
-            log.info(cmd.format(**locals()))
+                '"btrfs subvolume delete {remote_snapshots}/{snapshot_name}"')
+            log.info(rmcmd.format(**locals()))
             run(rmcmd.format(**locals()), shell=True, stdout=PIPE, stderr=PIPE)
             log.info(cmd.format(**locals()))
             run(cmd.format(**locals()),
