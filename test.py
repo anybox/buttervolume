@@ -7,7 +7,7 @@ from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
-from buttervolume.plugin import jsonloads, TEST_RECEIVE_PATH, _volume_path
+from buttervolume.plugin import jsonloads, TEST_RECEIVE_PATH
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output
@@ -414,39 +414,6 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
         btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
         btrfs.Subvolume(join(SNAPSHOTS_PATH, volume_backup)).delete()
-
-    def test_volume_path(self):
-        # by default the volumes are in the default location
-        self.assertEqual(_volume_path('vol'), VOLUMES_PATH + 'vol')
-        # we can specify another
-        self.assertEqual(_volume_path('vol', 'path'), 'path/vol')
-        self.assertEqual(_volume_path('vol', 'path'), 'path/vol')
-        self.assertEqual(_volume_path('vol'), 'path/vol')
-        # we can reset to the default location
-        self.assertEqual(_volume_path('vol', ''), VOLUMES_PATH + 'vol')
-        self.assertEqual(_volume_path('vol', 'path2'), 'path2/vol')
-        self.assertEqual(_volume_path('vol2', 'path'), 'path/vol2')
-        self.assertEqual(_volume_path('vol2', 'path3'), 'path3/vol2')
-        self.assertEqual(_volume_path('vol', ''), VOLUMES_PATH + 'vol')
-        self.assertEqual(_volume_path('vol2', ''), VOLUMES_PATH + 'vol2')
-
-    def test_alternate_volume_dir(self):
-        """Check we can specify a volumes path different from the standard one
-        for a specific volume"""
-        name = 'buttervolume-test-' + uuid.uuid4().hex
-        volumes = tempfile.mkdtemp()
-        self.app.post('/VolumeDriver.Create', json.dumps(
-            {'Name': name, 'Opts': {'VolumesPath': volumes}}))
-        self.assertEqual(os.listdir(volumes), [name])
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        self.assertEqual(os.listdir(volumes), [])
-
-    def test_blockdevice(self):
-        """Check we can specify a block device to mount
-        before mounting a volume"""
-        # create a block device as a file
-        # create a volume
-        pass
 
 
 if __name__ == '__main__':

@@ -16,7 +16,6 @@ VOLUMES_PATH = "/var/lib/docker/volumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
 TEST_RECEIVE_PATH = "/var/lib/docker/received/"
 SCHEDULE = "/etc/buttervolume/schedule.csv"
-PATH_STORE = "/etc/buttervolume/volumepath.csv"
 SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}}
 
 
@@ -29,62 +28,17 @@ def plugin_activate():
     return json.dumps({'Implements': ['VolumeDriver']})
 
 
-def _volume_path(name, path=None):
-    """Simple CRUD for volume paths
-    if path is None: returns the stored path or the standard one
-    if path is '': delete the stored path
-    if path is specified, store it
-    """
-    if path is None:  # READ
-        if os.path.exists(PATH_STORE):
-            with open(PATH_STORE) as f:
-                for v, p in csv.reader(f):
-                    if v == name:
-                        return join(p, v)
-        return join(VOLUMES_PATH, name)
-    if path == '':  # DELETE
-        paths = []
-        if os.path.exists(PATH_STORE):
-            with open(PATH_STORE) as f:
-                for v, p in csv.reader(f):
-                    if v == name:
-                        continue
-        os.makedirs(dirname(PATH_STORE), exist_ok=True)
-        with open(PATH_STORE, 'w') as f:
-            for line in paths:
-                csv.writer(f).writerow(line)
-        return join(VOLUMES_PATH, name)
-    # UPDATE or CREATE
-    paths = []
-    if os.path.exists(PATH_STORE):
-        with open(PATH_STORE) as f:
-            for v, p in csv.reader(f):
-                if v == name:
-                    continue
-                paths.append((v, p))
-            paths.append((name, path))
-    os.makedirs(dirname(PATH_STORE), exist_ok=True)
-    with open(PATH_STORE, 'w') as f:
-        for line in paths:
-            csv.writer(f).writerow(line)
-    return join(path, name)
-
-
 @route('/VolumeDriver.Create', ['POST'])
 def volume_create():
-    request_data = jsonloads(request.body.read())
-    name = request_data['Name']
-    options = request_data.get('Opts')
-    volumes_path = options and options.get('VolumesPath')
-    if volumes_path:  # store it
-        _volume_path(name, volumes_path)
+    name = jsonloads(request.body.read())['Name']
     if '@' in name:
         return json.dumps({'Err': '"@" is illegal in the name of the volume'})
+    volpath = join(VOLUMES_PATH, name)
     # volume already exists?
     if name in [v['Name']for v in json.loads(volume_list())['Volumes']]:
         return json.dumps({'Err': ''})
     try:
-        btrfs.Subvolume(_volume_path(name)).create()
+        btrfs.Subvolume(volpath).create()
     except Exception as e:
         return {'Err': e.strerror}
     return json.dumps({'Err': ''})
@@ -93,7 +47,7 @@ def volume_create():
 @route('/VolumeDriver.Mount', ['POST'])
 def volume_mount():
     name = jsonloads(request.body.read())['Name']
-    path = _volume_path(name)
+    path = join(VOLUMES_PATH, name)
     if exists(join(path, '_data', '.nocow')) or exists(join(path, '.nocow')):
         try:
             check_call("chattr +C '{}'".format(join(path)), shell=True)
@@ -111,7 +65,7 @@ def volume_mount():
 @route('/VolumeDriver.Path', ['POST'])
 def volume_path():
     name = jsonloads(request.body.read())['Name']
-    path = _volume_path(name)
+    path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).show()
     except Exception:
@@ -127,7 +81,7 @@ def volume_unmount():
 @route('/VolumeDriver.Get', ['POST'])
 def volume_get():
     name = jsonloads(request.body.read())['Name']
-    path = _volume_path(name)
+    path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).show()
     except Exception:
@@ -139,7 +93,7 @@ def volume_get():
 @route('/VolumeDriver.Remove', ['POST'])
 def volume_remove():
     name = jsonloads(request.body.read())['Name']
-    path = _volume_path(name)
+    path = join(VOLUMES_PATH, name)
     try:
         btrfs.Subvolume(path).delete()
     except Exception:
@@ -150,12 +104,8 @@ def volume_remove():
 @route('/VolumeDriver.List', ['POST'])
 def volume_list():
     volumes = []
-    specials = []
-    if os.path.exists(PATH_STORE):
-        with open(PATH_STORE) as f:
-            specials = [join(p, v) for v, p in csv.reader(f)]
     for p in [join(VOLUMES_PATH, v) for v in os.listdir(VOLUMES_PATH)
-              if v != 'metadata.db'] + specials:
+              if v != 'metadata.db']:
         try:
             btrfs.Subvolume(p).show()
         except Exception:
@@ -221,7 +171,7 @@ def volume_snapshot():
     """snapshot a volume in the SNAPSHOTS dir
     """
     name = jsonloads(request.body.read())['Name']
-    path = _volume_path(name)
+    path = join(VOLUMES_PATH, name)
     timestamped = '{}@{}'.format(name, datetime.now().isoformat())
     snapshot_path = join(SNAPSHOTS_PATH, timestamped)
     if not os.path.exists(path):
@@ -309,7 +259,7 @@ def snapshot_restore():
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     snapshot = btrfs.Subvolume(snapshot_path)
     volume_name = snapshot_name.split('@')[0]
-    volume_path = _volume_path(volume_name)
+    volume_path = join(VOLUMES_PATH, volume_name)
     volume = btrfs.Subvolume(volume_path)
     res = {'Err': ''}
     if snapshot.exists():
