@@ -178,9 +178,7 @@ def scheduler(config=SCHEDULE, test=False):
                 SCHEDULE_LOG.setdefault(action, {})
                 SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
                 last = SCHEDULE_LOG[action][name]
-                logger.info("SCHEDULE_LOG {}".format(SCHEDULE_LOG))
                 if now < last + timedelta(minutes=int(timer)):
-                    logger.info("Nothing to do yet for {}".format(line))
                     continue
                 if action not in SCHEDULE_LOG.keys():
                     logger.warn("Skipping invalid action %s", action)
@@ -192,7 +190,7 @@ def scheduler(config=SCHEDULE, test=False):
                     logger.info("Successfully snapshotted to %s", snap)
                     SCHEDULE_LOG[action][name] = now
                 if action.startswith('replicate:'):
-                    action, host = action.split(':')
+                    _, host = action.split(':')
                     logger.info("Running scheduled replication of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
                     logger.info("Successfully snapshotted to %s", snap)
