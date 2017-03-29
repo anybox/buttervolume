@@ -179,6 +179,7 @@ def scheduler(config=SCHEDULE, test=False):
                 SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
                 last = SCHEDULE_LOG[action][name]
                 if now < last + timedelta(minutes=int(timer)):
+                    logger.info("Nothing to do yet for {}".format(line))
                     continue
                 if action not in SCHEDULE_LOG.keys():
                     logger.warn("Skipping invalid action %s", action)
