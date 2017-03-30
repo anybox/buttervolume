@@ -161,6 +161,7 @@ def scheduler(config=SCHEDULE, test=False):
     WARNING: this should be guaranteed against runtime errors
     otherwise the next scheduler won't run
     """
+    logger.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
         logger.warn('No config file %s', config)
