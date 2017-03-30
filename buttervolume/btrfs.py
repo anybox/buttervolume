@@ -2,8 +2,9 @@ import os
 from subprocess import run as _run, PIPE
 
 
-def run(cmd):
-    return _run(cmd, shell=True, check=True, stdout=PIPE).stdout.decode()
+def run(cmd, shell=True, check=True, stdout=PIPE, stderr=PIPE):
+    return _run(cmd, shell=shell, check=check, stdout=stdout,
+                stderr=stderr).stdout.decode()
 
 
 class Subvolume(object):

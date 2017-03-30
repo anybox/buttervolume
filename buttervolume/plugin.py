@@ -6,7 +6,7 @@ from bottle import request, route
 from buttervolume import btrfs
 from datetime import datetime
 from os.path import join, basename, exists, dirname
-from subprocess import check_call
+from subprocess import check_call, CalledProcessError
 from subprocess import run, PIPE
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
@@ -66,9 +66,7 @@ def volume_mount():
 def volume_path():
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
-    try:
-        btrfs.Subvolume(path).show()
-    except Exception:
+    if not btrfs.Subvolume(path).exists():
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps({'Mountpoint': path, 'Err': ''})
 
@@ -82,9 +80,7 @@ def volume_unmount():
 def volume_get():
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
-    try:
-        btrfs.Subvolume(path).show()
-    except Exception:
+    if not btrfs.Subvolume(path).exists():
         return json.dumps({'Err': '{}: no such volume'.format(path)})
     return json.dumps(
         {'Volume': {'Name': name, 'Mountpoint': path}, 'Err': ''})
@@ -106,9 +102,7 @@ def volume_list():
     volumes = []
     for p in [join(VOLUMES_PATH, v) for v in os.listdir(VOLUMES_PATH)
               if v != 'metadata.db']:
-        try:
-            btrfs.Subvolume(p).show()
-        except Exception:
+        if not btrfs.Subvolume(p).exists():
             continue
         volumes.append(p)
     return json.dumps({'Volumes': [{'Name': basename(v)} for v in volumes],
@@ -144,9 +138,10 @@ def snapshot_send():
         log.info(cmd.format(**locals()))
         run(cmd.format(**locals()),
             shell=True, check=True, stdout=PIPE, stderr=PIPE)
-    except:
-        log.warn('Failed using parent %s. Sending full snapshot %s',
-                 latest, snapshot_path)
+    except CalledProcessError as e:
+        log.warn('Failed using parent %s. Sending full snapshot %s '
+                 '(stdout: %s, stderr: %s)',
+                 latest, snapshot_path, e.stdout, e.stderr)
         parent = ''
         try:
             rmcmd = (
@@ -157,8 +152,11 @@ def snapshot_send():
             log.info(cmd.format(**locals()))
             run(cmd.format(**locals()),
                 shell=True, check=True, stdout=PIPE, stderr=PIPE)
-        except Exception as e:
-            return json.dumps({'Err': str(e)})
+        except CalledProcessError as e:
+            log.error('Failed sending full snapshot '
+                      '(stdout: %s, stderr: %s)',
+                      e.stdout, e.stderr)
+            return json.dumps({'Err': str(e.stderr)})
     btrfs.Subvolume(snapshot_path).snapshot(
         '{}@{}'.format(snapshot_path, remote_host), readonly=True)
     for old_snapshot in sent_snapshots:

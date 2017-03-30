@@ -11,11 +11,12 @@ from bottle import app
 from buttervolume.plugin import jsonloads, SCHEDULE
 from buttervolume.plugin import SCHEDULE_LOG, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
+from subprocess import CalledProcessError
 from threading import Timer
 from waitress import serve
 from webtest import TestApp
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
+log = logging.getLogger()
 SOCKET = '/run/docker/plugins/btrfs.sock'
 TIMER = 60
 app = app()
@@ -31,16 +32,16 @@ class Session(object):
         try:
             return self.session.post(*a, **kw)
         except ConnectionError:
-            logger.error('Failed to connect to Buttervolume. '
-                         'You can start it with: buttervolume run')
+            log.error('Failed to connect to Buttervolume. '
+                      'You can start it with: buttervolume run')
             sys.exit(1)
 
     def get(self, *a, **kw):
         try:
             return self.session.get(*a, **kw)
         except ConnectionError:
-            logger.error('Failed to connect to Buttervolume. '
-                         'You can start it with: buttervolume run')
+            log.error('Failed to connect to Buttervolume. '
+                      'You can start it with: buttervolume run')
             sys.exit(1)
 
 
@@ -52,12 +53,12 @@ def get_from(resp, key):
     except:  # TestApp
         content = resp.body
     if resp.status_code != 200:
-        logger.error('%s: %s', resp.status_code, resp.reason)
+        log.error('%s: %s', resp.status_code, resp.reason)
         sys.exit(1)
     else:
         error = jsonloads(content)['Err']
         if error:
-            logger.error(error)
+            log.error(error)
             sys.exit(1)
     return jsonloads(content).get(key)
 
@@ -161,10 +162,10 @@ def scheduler(config=SCHEDULE, test=False):
     WARNING: this should be guaranteed against runtime errors
     otherwise the next scheduler won't run
     """
-    logger.info("New scheduler job at %s", datetime.now())
+    log.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
-        logger.warn('No config file %s', config)
+        log.warn('No config file %s', config)
         if not test:
             Timer(TIMER, scheduler).start()
         return
@@ -182,26 +183,31 @@ def scheduler(config=SCHEDULE, test=False):
                 if now < last + timedelta(minutes=int(timer)):
                     continue
                 if action not in SCHEDULE_LOG.keys():
-                    logger.warn("Skipping invalid action %s", action)
+                    log.warn("Skipping invalid action %s", action)
                     continue
                 # choose and run the right action
                 if action == "snapshot":
-                    logger.info("Running scheduled snapshot of %s", name)
+                    log.info("Running scheduled snapshot of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
-                    logger.info("Successfully snapshotted to %s", snap)
+                    log.info("Successfully snapshotted to %s", snap)
                     SCHEDULE_LOG[action][name] = now
                 if action.startswith('replicate:'):
                     _, host = action.split(':')
-                    logger.info("Running scheduled replication of %s", name)
+                    log.info("Running scheduled replication of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
-                    logger.info("Successfully snapshotted to %s", snap)
+                    log.info("Successfully snapshotted to %s", snap)
                     send(Arg(snapshot=[snap], host=[host]), test=test)
-                    logger.info("Successfully replicated %s to %s", name, snap)
+                    log.info("Successfully replicated %s to %s", name, snap)
                     SCHEDULE_LOG[action][name] = now
+            except CalledProcessError as e:
+                log.error('Error processing scheduler action file %s '
+                          'name=%s, action=%s, timer=%s, '
+                          'exception=%s, stdout=%s, stderr=%s',
+                          config, name, action, timer, str(e), e.stdout, e.stderr)
             except Exception as e:
-                logger.error('Error processing scheduler action file %s '
-                             'name=%s, action=%s, timer=%s\n%s',
-                             config, name, action, timer, str(e))
+                log.error('Error processing scheduler action file %s '
+                          'name=%s, action=%s, timer=%s\n%s',
+                          config, name, action, timer, str(e))
     # schedule the next run
     if not test:  # run only once
         Timer(TIMER, scheduler).start()
@@ -209,7 +215,7 @@ def scheduler(config=SCHEDULE, test=False):
 
 def run(args):
     if not os.path.exists(SNAPSHOTS_PATH):
-        logger.info('Creating %s', SNAPSHOTS_PATH)
+        log.info('Creating %s', SNAPSHOTS_PATH)
         os.makedirs(SNAPSHOTS_PATH, exist_ok=True)
     # run a thread for the scheduled snapshots
     print('Starting scheduler job every {}s'.format(TIMER))
