@@ -34,7 +34,7 @@ class Session(object):
         except ConnectionError:
             log.error('Failed to connect to Buttervolume. '
                       'You can start it with: buttervolume run')
-            sys.exit(1)
+            return
 
     def get(self, *a, **kw):
         try:
@@ -42,25 +42,26 @@ class Session(object):
         except ConnectionError:
             log.error('Failed to connect to Buttervolume. '
                       'You can start it with: buttervolume run')
-            sys.exit(1)
 
 
 def get_from(resp, key):
     """get specified key from plugin response output
     """
+    if resp is None:
+        return False
     try:  # bottle
         content = resp.content
     except:  # TestApp
         content = resp.body
-    if resp.status_code != 200:
-        log.error('%s: %s', resp.status_code, resp.reason)
-        sys.exit(1)
-    else:
+    if resp.status_code == 200:
         error = jsonloads(content)['Err']
         if error:
             log.error(error)
-            sys.exit(1)
-    return jsonloads(content).get(key)
+            return False
+        return jsonloads(content).get(key)
+    else:
+        log.error('%s: %s', resp.status_code, resp.reason)
+        return False
 
 
 def snapshot(args, test=False):
@@ -73,10 +74,10 @@ def snapshot(args, test=False):
             'http+unix://{}{}'
             .format(urllib.parse.quote_plus(SOCKET), urlpath),
             param)
-    res = get_from(resp, 'Snapshot') or sys.exit(1)
+    res = get_from(resp, 'Snapshot')
     if res:
         print(res)
-        return res
+    return res
 
 
 def schedule(args):
@@ -85,9 +86,11 @@ def schedule(args):
         'Name': args.name[0],
         'Action': args.action[0],
         'Timer': args.timer[0]})
-    Session().post(
-        'http+unix://{}{}'
-        .format(urllib.parse.quote_plus(SOCKET), urlpath), param)
+    resp = Session().post(
+           'http+unix://{}{}'
+           .format(urllib.parse.quote_plus(SOCKET), urlpath), param)
+    res = get_from(resp, '')
+    return res
 
 
 def scheduled(args):
@@ -96,8 +99,10 @@ def scheduled(args):
         'http+unix://{}{}'
         .format(urllib.parse.quote_plus(SOCKET), urlpath))
     scheduled = get_from(resp, 'Schedule')
-    print('\n'.join(["{Action} {Timer} {Name}".format(**job)
-                     for job in scheduled]))
+    if scheduled:
+        print('\n'.join(["{Action} {Timer} {Name}".format(**job)
+                         for job in scheduled]))
+    return scheduled
 
 
 def snapshots(args):
@@ -106,10 +111,9 @@ def snapshots(args):
         .format(urllib.parse.quote_plus(SOCKET)),
         json.dumps({'Name': args.name}))
     snapshots = get_from(resp, 'Snapshots')
-    if snapshots is None:
-        sys.exit(1)
-    elif snapshots:
+    if snapshots:
         print('\n'.join(snapshots))
+    return snapshots
 
 
 def restore(args):
@@ -120,7 +124,7 @@ def restore(args):
     res = get_from(resp, 'VolumeBackup')
     if res:
         print(res)
-        return res
+    return res
 
 
 def send(args, test=False):
@@ -137,6 +141,7 @@ def send(args, test=False):
     res = get_from(resp, '')
     if res:
         print(res)
+    return res
 
 
 def remove(args):
@@ -149,6 +154,7 @@ def remove(args):
     res = get_from(resp, '')
     if res:
         print(res)
+    return res
 
 
 class Arg():
@@ -203,7 +209,8 @@ def scheduler(config=SCHEDULE, test=False):
                 log.error('Error processing scheduler action file %s '
                           'name=%s, action=%s, timer=%s, '
                           'exception=%s, stdout=%s, stderr=%s',
-                          config, name, action, timer, str(e), e.stdout, e.stderr)
+                          config, name, action, timer,
+                          str(e), e.stdout, e.stderr)
             except Exception as e:
                 log.error('Error processing scheduler action file %s '
                           'name=%s, action=%s, timer=%s\n%s',
@@ -283,6 +290,7 @@ def main():
 
     args = parser.parse_args()
     if hasattr(args, 'func'):
-        args.func(args)
+        if args.func(args) is False:
+            sys.exit(1)
     else:
         parser.print_help()

@@ -351,6 +351,9 @@ class TestCase(unittest.TestCase):
         # replicate the volume every 120 minutes
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'replicate:localhost', 'Timer': 120}))
+        # also replicate a non existing volume
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': 'boo', 'Action': 'replicate:localhost', 'Timer': 120}))
         # simulate we spent more time
         SCHEDULE_LOG.setdefault('replicate:localhost', {})
         SCHEDULE_LOG['replicate:localhost'
@@ -364,6 +367,8 @@ class TestCase(unittest.TestCase):
             1, len({s for s in os.listdir(TEST_RECEIVE_PATH)
                     if s.startswith(name) or s.startswith(name)}))
         # unschedule the last job
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': 'boo', 'Action': 'replicate:localhost', 'Timer': 0}))
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'replicate:localhost', 'Timer': 0}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))

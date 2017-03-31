@@ -173,7 +173,7 @@ def volume_snapshot():
     timestamped = '{}@{}'.format(name, datetime.now().isoformat())
     snapshot_path = join(SNAPSHOTS_PATH, timestamped)
     if not os.path.exists(path):
-        return json.dumps({'Err': 'No such volume'})
+        return json.dumps({'Err': 'No such volume: {}'.format(name)})
     try:
         btrfs.Subvolume(path).snapshot(snapshot_path, readonly=True)
     except Exception as e:
