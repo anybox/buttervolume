@@ -2,7 +2,7 @@
 
 SSH_PORT=${SSH_PORT:-1122}
 
-echo "Port 1122" >> /etc/ssh/sshd_config
+sed -r "s/[#]{0,1}Port [0-9]{2,5}/Port $SSH_PORT/g" /etc/ssh/sshd_config -i
 service ssh start
 
 if [[ $1 == 'test' ]]; then
@@ -13,7 +13,7 @@ if [[ $1 == 'test' ]]; then
     ssh-keygen -f /root/.ssh/id_rsa -N ""
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
-    ssh-keyscan -p 1122 localhost >> /root/.ssh/known_hosts
+    ssh-keyscan -p $SSH_PORT localhost >> /root/.ssh/known_hosts
 
     exec python3 setup.py $@
 else
