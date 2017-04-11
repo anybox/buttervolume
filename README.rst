@@ -112,8 +112,8 @@ or using and testing the docker image (with python >= 3.5)::
         -w /usr/src/buttervolume: \
         anybox/buttervolume test
 
-If you haven't a BTRFS partition or volume you can setup a virtual partition
-in a file as follow (tested on Debian 8):
+If you have no BTRFS partitions or volumes you can setup a virtual partition
+in a file as follows (tested on Debian 8):
 
 * Setup brtfs virtual partition::
 
@@ -132,7 +132,7 @@ in a file as follow (tested on Debian 8):
 
    you can ignore errors error, in fact the new FS is formated
 
-* Mount the partition somewhere temporarely to create 3 new btrfs subvolumes::
+* Mount the partition somewhere temporarily to create 3 new btrfs subvolumes::
 
     $ sudo mkdir /tmp/btrfs_mount_point \
         && sudo mount -o loop /var/lib/docker/btrfs.img /tmp/btrfs_mount_point/ \
