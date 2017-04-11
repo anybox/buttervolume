@@ -188,16 +188,6 @@ class TestCase(unittest.TestCase):
         # check the second snapshot is a child of the first one
         self.assertEqual(btrfs.Subvolume(remote_path).show()['UUID'],
                          btrfs.Subvolume(remote_path2).show()['Parent UUID'])
-        # clean up
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        btrfs.Subvolume(join(SNAPSHOTS_PATH,
-                             snapshot + '@localhost')).delete()
-        btrfs.Subvolume(join(SNAPSHOTS_PATH,
-                             snapshot2 + '@localhost')).delete()
-        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
-        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot2)).delete()
-        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshot)).delete()
-        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshot2)).delete()
 
     def test_snapshot(self):
         """Check we can snapshot a volume
@@ -217,10 +207,6 @@ class TestCase(unittest.TestCase):
         with open(join(path, 'foobar')) as x:
             with open(join(snapshot, 'foobar')) as y:
                 self.assertEqual(x.read(), y.read())
-        # clean up
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snapshot}))
 
     def test_snapshots(self):
         """Check we can list snapshots
@@ -260,17 +246,6 @@ class TestCase(unittest.TestCase):
         snapshots = json.loads(resp.body.decode())['Snapshots']
         # check the list of snapshots
         self.assertEqual(set(snapshots), set([snap3, snap4]))
-        # clean up
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snap1}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snap2}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snap3}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snap4}))
 
     def test_schedule_snapshot(self):
         """check we can schedule actions such as snapshots
@@ -337,13 +312,6 @@ class TestCase(unittest.TestCase):
         # unschedule
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'snapshot', 'Timer': 0}))
-        # clean up
-        for snap in os.listdir(SNAPSHOTS_PATH):
-            if snap.startswith(name) or snap.startswith(name2):
-                self.app.post('/VolumeDriver.Snapshot.Remove',
-                              json.dumps({'Name': snap}))
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name2}))
 
     def test_schedule_replicate(self):
         # create a volume with a file
@@ -384,15 +352,6 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'replicate:localhost', 'Timer': 0}))
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        # clean up
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        resp = self.app.post('/VolumeDriver.Snapshot.List', json.dumps({}))
-        snapshots = sorted(json.loads(resp.body.decode())['Snapshots'])
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snapshots[0]}))
-        self.app.post('/VolumeDriver.Snapshot.Remove',
-                      json.dumps({'Name': snapshots[1]}))
-        btrfs.Subvolume(join(TEST_RECEIVE_PATH, snapshots[0])).delete()
 
     def test_restore(self):
         """ Check we can restore a snapshot as a volume
@@ -421,16 +380,6 @@ class TestCase(unittest.TestCase):
         path = join(SNAPSHOTS_PATH, volume_backup)
         with open(join(path, 'foobar')) as f:
             self.assertEqual(f.read(), 'modified foobar')
-        # delete the volume and check we still can restore
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        resp = self.app.post('/VolumeDriver.Snapshot.Restore',
-                             json.dumps({'Name': snapshot}))
-        path = join(VOLUMES_PATH, name)
-        with open(join(path, 'foobar')) as f:
-            self.assertEqual(f.read(), 'original foobar')
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
-        btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
-        btrfs.Subvolume(join(SNAPSHOTS_PATH, volume_backup)).delete()
 
 
 if __name__ == '__main__':
