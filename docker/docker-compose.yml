@@ -9,3 +9,5 @@ services:
       - /var/lib/docker:/var/lib/docker
       - /run/docker/plugins:/run/docker/plugins
       - /etc/buttervolume
+    environment:
+      SSH_PORT: 1122

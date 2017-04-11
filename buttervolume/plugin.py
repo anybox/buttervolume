@@ -121,16 +121,14 @@ def snapshot_send():
     # take the latest snapshot suffixed with the target host
     sent_snapshots = sorted(
         [s for s in os.listdir(SNAPSHOTS_PATH)
-         if len(s.split('@')) == 3
-         and s.split('@')[0] == snapshot_name.split('@')[0]
-         and s.split('@')[2] == remote_host])
+         if len(s.split('@')) == 3 and
+         s.split('@')[0] == snapshot_name.split('@')[0] and
+         s.split('@')[2] == remote_host])
     latest = sent_snapshots[-1] if len(sent_snapshots) > 0 else None
     if latest and len(latest.rsplit('@')) == 3:
         latest = latest.rsplit('@', 1)[0]
     parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
-    port = '1122'
-    if test:  # I currently run tests outside docker
-        port = '22'
+    port = os.getenv("SSH_PORT", '1122')
     run('sync', shell=True)  # needed by a current issue with send
     cmd = ('btrfs send {parent} "{snapshot_path}"'
            ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"')

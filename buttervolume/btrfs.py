@@ -42,8 +42,14 @@ class Subvolume(object):
             run('chattr +C "{}"'.format(self.path))
         return out
 
-    def delete(self):
-        return run('btrfs subvolume delete "{}"'.format(self.path))
+    def delete(self, check=True):
+        """
+
+        :param check: if True, in case btrfs subvolume fails (exit code != 0)
+                      an exception will raised
+        :return: btrfs output string
+        """
+        return run('btrfs subvolume delete {}'.format(self.path), check=check)
 
 
 class Filesystem(object):

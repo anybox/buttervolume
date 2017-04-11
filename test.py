@@ -6,8 +6,8 @@ import tempfile
 from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
-from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
-from buttervolume.plugin import jsonloads, TEST_RECEIVE_PATH
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_RECEIVE_PATH
+from buttervolume.plugin import jsonloads
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output
@@ -16,14 +16,26 @@ from webtest import TestApp
 # check that the target dir is btrfs
 SCHEDULE = plugin.SCHEDULE = tempfile.mkstemp()[1]
 SCHEDULE_LOG = plugin.SCHEDULE_LOG
+PREFIX_TEST_VOLUME = 'buttervolume-test-'
 
 
 class TestCase(unittest.TestCase):
+
+    def cleanup(self):
+        # clean-up test volumes and snapshots before each test
+        btrfs.Subvolume(
+            join(VOLUMES_PATH, PREFIX_TEST_VOLUME) + '*').delete(check=False)
+        btrfs.Subvolume(
+            join(SNAPSHOTS_PATH, PREFIX_TEST_VOLUME) + '*').delete(check=False)
+        btrfs.Subvolume(
+            join(TEST_RECEIVE_PATH, PREFIX_TEST_VOLUME) + '*'
+        ).delete(check=False)
 
     def setUp(self):
         self.app = TestApp(cli.app)
         # check we have a btrfs
         btrfs.Filesystem(VOLUMES_PATH).label()
+        self.cleanup()
 
     def test(self):
         """first basic scenario
@@ -33,7 +45,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(resp, {'Volumes': [], 'Err': ''})
 
         # create a volume
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         resp = jsonloads(self.app.post('/VolumeDriver.Create',
                                        json.dumps({'Name': name})).body)
@@ -63,7 +75,7 @@ class TestCase(unittest.TestCase):
                                        json.dumps({'Name': name})).body)
         self.assertEqual(resp['Mountpoint'], join(VOLUMES_PATH, name))
         # not existing path
-        name2 = 'buttervolume-test-' + uuid.uuid4().hex
+        name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Mount',
             json.dumps({'Name': name2})).body)
@@ -78,7 +90,7 @@ class TestCase(unittest.TestCase):
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Path',
             json.dumps({
-                'Name': 'buttervolume-test-' + uuid.uuid4().hex})).body)
+                'Name': PREFIX_TEST_VOLUME + uuid.uuid4().hex})).body)
         self.assertTrue(resp['Err'].endswith('no such volume'))
 
         # unmount
@@ -89,7 +101,7 @@ class TestCase(unittest.TestCase):
         resp = jsonloads(self.app.post(
             '/VolumeDriver.Unmount',
             json.dumps({
-                'Name': 'buttervolume-test-' + uuid.uuid4().hex})).body)
+                'Name': PREFIX_TEST_VOLUME + uuid.uuid4().hex})).body)
         self.assertEqual(resp, {'Err': ''})
 
         # remove
@@ -117,7 +129,7 @@ class TestCase(unittest.TestCase):
         """Putting a .nocow file in the volume creation should disable cow
         """
         # create a volume
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
 
@@ -129,14 +141,14 @@ class TestCase(unittest.TestCase):
         self.app.post('/VolumeDriver.Mount', json.dumps({'Name': name}))
         # check the nocow
         self.assertTrue(b'-C-' in check_output(
-                "lsattr -d '{}'".format(path), shell=True).split()[0])
+            "lsattr -d '{}'".format(path), shell=True).split()[0])
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
     def test_send(self):
         """We can send a snapshot incrementally to another host
         """
         # create a volume with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
@@ -191,7 +203,7 @@ class TestCase(unittest.TestCase):
         """Check we can snapshot a volume
         """
         # create a volume with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
@@ -214,9 +226,9 @@ class TestCase(unittest.TestCase):
         """Check we can list snapshots
         """
         # create two volumes with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
-        name2 = 'buttervolume-test-' + uuid.uuid4().hex
+        name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path2 = join(VOLUMES_PATH, name2)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
@@ -264,8 +276,8 @@ class TestCase(unittest.TestCase):
         """check we can schedule actions such as snapshots
         """
         # create a volume with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
-        name2 = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         path2 = join(VOLUMES_PATH, name2)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
@@ -335,7 +347,7 @@ class TestCase(unittest.TestCase):
 
     def test_schedule_replicate(self):
         # create a volume with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
@@ -386,7 +398,7 @@ class TestCase(unittest.TestCase):
         """ Check we can restore a snapshot as a volume
         """
         # create a volume with a file
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
