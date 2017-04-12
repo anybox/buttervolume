@@ -17,11 +17,11 @@ before_script:
   - sudo btrfs subvolume create /tmp/btrfs_mount_point/received
   - sudo umount /tmp/btrfs_mount_point/
   - sudo rm -rf /tmp/btrfs_mount_point/
-  - sudo systemctl stop docker
+  - sudo service docker stop
   - sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/volumes
   - sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots
   - sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received
-  - sudo systemctl start docker
+  - sudo service docker start
   - docker build -t anybox/buttervolume docker/
 
 script:
