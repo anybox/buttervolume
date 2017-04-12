@@ -1,12 +1,16 @@
 import json
 import os
+import shutil as _shutil
 import unittest
 import uuid
 import tempfile
+import time
+import warnings as _warnings
+import weakref as _weakref
 from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
-from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_RECEIVE_PATH
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH
 from buttervolume.plugin import jsonloads
 from datetime import datetime, timedelta
 from os.path import join
@@ -23,9 +27,10 @@ class TestCase(unittest.TestCase):
 
     def cleanup(self):
         """clean-up test volumes and snapshots before each test"""
-        for directory in (VOLUMES_PATH, SNAPSHOTS_PATH, TEST_RECEIVE_PATH):
+        for directory in (VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH):
             btrfs.Subvolume(
                 join(directory, PREFIX_TEST_VOLUME) + '*').delete(check=False)
+
 
     def setUp(self):
         self.app = TestApp(cli.app)
@@ -167,7 +172,7 @@ class TestCase(unittest.TestCase):
             'Name': snapshot,
             'Host': 'localhost',
             'Test': True}))
-        remote_path = join(TEST_RECEIVE_PATH, snapshot)
+        remote_path = join(TEST_REMOTE_PATH, snapshot)
         # check the volumes have the same content
         with open(join(snapshot_path, 'foobar')) as x:
             with open(join(remote_path, 'foobar')) as y:
@@ -184,7 +189,7 @@ class TestCase(unittest.TestCase):
             'Name': snapshot2,
             'Host': 'localhost',
             'Test': True}))
-        remote_path2 = join(TEST_RECEIVE_PATH, snapshot2)
+        remote_path2 = join(TEST_REMOTE_PATH, snapshot2)
         # check the files are the same
         with open(join(snapshot2_path, 'foobar')) as x:
             with open(join(remote_path2, 'foobar')) as y:
@@ -331,14 +336,13 @@ class TestCase(unittest.TestCase):
             2, len({s for s in os.listdir(SNAPSHOTS_PATH)
                     if s.startswith(name) or s.startswith(name)}))
         self.assertEqual(
-            1, len({s for s in os.listdir(TEST_RECEIVE_PATH)
+            1, len({s for s in os.listdir(TEST_REMOTE_PATH)
                     if s.startswith(name) or s.startswith(name)}))
         # unschedule the last job
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': 'boo', 'Action': 'replicate:localhost', 'Timer': 0}))
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'replicate:localhost', 'Timer': 0}))
-        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
     def test_restore(self):
         """ Check we can restore a snapshot as a volume
@@ -457,6 +461,153 @@ class TestCase(unittest.TestCase):
         # unschedule
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'purge:2h:2h', 'Timer': 0}))
+
+    def test_synchronization(self):
+        """Check we can snapshot a volume
+        """
+        # create a volume with a file
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        remote_path = join(TEST_REMOTE_PATH, name)
+        # Prepare local btrfs subvolume
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # We can't use same subvolume name twice on the same host so use a
+        # non btrf directory for testing purpose
+        with TemporaryDirectory(remote_path) as remote_path:
+            with open(join(remote_path, 'foobar'), 'w') as f:
+                f.write('test sync')
+            self.app.post(
+                '/VolumeDriver.Volume.Sync',
+                json.dumps({
+                    'Volumes': [name],
+                    'Hosts': ['localhost'],
+                    'Test': True,
+                })
+            )
+            # TODO: understand why we must sleep
+            time.sleep(1)
+            with open(join(path, 'foobar')) as x:
+                self.assertEqual(x.read(), "test sync")
+            # change it after localy and sync again
+            with open(join(path, 'foobar'), 'w') as f:
+                f.write('foobar')
+            self.app.post(
+                '/VolumeDriver.Volume.Sync',
+                json.dumps({
+                    'Volumes': [name],
+                    'Hosts': ['localhost'],
+                    'Test': True,
+                })
+            )
+            # TODO: understand why we must sleep
+            time.sleep(1)
+            with open(join(path, 'foobar')) as x:
+                self.assertEqual(x.read(), "foobar")
+
+    def test_schedule_synchronization(self):
+        # create a volume with a file
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        remote_path = join(TEST_REMOTE_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
+        # check we have no schedule
+        resp = self.app.get('/VolumeDriver.Schedule.List')
+        schedule = json.loads(resp.body.decode())['Schedule']
+        self.assertEqual(len(schedule), 0)
+        # check we have no snapshots
+        resp = self.app.post('/VolumeDriver.Snapshot.List', json.dumps({}))
+        snapshots = json.loads(resp.body.decode())['Snapshots']
+        self.assertEqual(len(snapshots), 0)
+        # synchronize the volume every 120 minutes, even some host are not
+        # responding we should synchronise other hosts
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {
+                'Name': name,
+                'Action': 'synchronize:localhost,wronghost.mlf',
+                'Timer': 120
+            }))
+        # also replicate a non existing volume
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': 'boo', 'Action': 'synchronize:localhost', 'Timer': 120}))
+        # simulate we spent more time
+        SCHEDULE_LOG.setdefault(
+            'synchronize:localhost,wronghost.mlf', {}
+        )
+        SCHEDULE_LOG['synchronize:localhost,wronghost.mlf'][name] = \
+            datetime.now() - timedelta(1)
+        with TemporaryDirectory(remote_path) as remote_path:
+            with open(join(remote_path, 'foobar'), 'w') as f:
+                f.write('test sync')
+            # run the scheduler and check we only have two more snapshots
+            scheduler(SCHEDULE, test=True)
+        # make sure a snapshot has occure before rsync
+        snapshots = [s for s in os.listdir(SNAPSHOTS_PATH)
+                     if s.startswith(name)]
+        self.assertEqual(
+            1, len(snapshots))
+
+        with open(join(SNAPSHOTS_PATH, snapshots[0], 'foobar')) as x:
+            self.assertEqual(x.read(), "foobar")
+        with open(join(path, 'foobar')) as x:
+            self.assertEqual(x.read(), "test sync")
+
+        # unschedule the last job
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': 'boo', 'Action': 'synchronize:localhost', 'Timer': 0}))
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {
+                'Name': name,
+                'Action': 'synchronize:localhost,wronghost.mlf',
+                'Timer': 0,
+            }
+        ))
+
+
+class TemporaryDirectory(object):
+    """Create and return a temporary directory. This has the same
+    behavior as tempfile.TemporaryDirectory but is used with a given path
+    directory, if directory already exists that directory and everything
+    contained in it are removed.  For
+    example:
+        with TemporaryDirectory('/tmp/mydir') as tmpdir:
+            ...
+    Upon exiting the context, the directory and everything contained
+    in it are removed.
+    """
+
+    def __init__(self, path):
+        self.name = self.mkdir(path)
+        self._finalizer = _weakref.finalize(
+            self, self._cleanup, self.name,
+            warn_message="Implicitly cleaning up {!r}".format(self))
+
+    @classmethod
+    def _cleanup(cls, name, warn_message):
+        _shutil.rmtree(name)
+        _warnings.warn(warn_message, ResourceWarning)
+
+    def mkdir(self, path):
+        if os.path.isdir(path):
+            self.cleanup()
+        os.mkdir(path, 0o700)
+        return path
+
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self.name)
+
+    def __enter__(self):
+        return self.name
+
+    def __exit__(self, exc, value, tb):
+        self.cleanup()
+
+    def cleanup(self):
+        if self._finalizer.detach():
+            _shutil.rmtree(self.name)
 
 
 if __name__ == '__main__':

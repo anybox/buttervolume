@@ -14,9 +14,9 @@ log = logging.getLogger()
 # absolute path to the volumes
 VOLUMES_PATH = "/var/lib/docker/volumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
-TEST_RECEIVE_PATH = "/var/lib/docker/received/"
+TEST_REMOTE_PATH = "/var/lib/docker/received/"
 SCHEDULE = "/etc/buttervolume/schedule.csv"
-SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}}
+SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}, 'synchronize': {}}
 
 
 def jsonloads(stuff):
@@ -110,6 +110,44 @@ def volume_list():
                        'Err': ''})
 
 
+@route('/VolumeDriver.Volume.Sync', ['POST'])
+def volume_sync():
+    """Rsync between two nodes"""
+    test = jsonloads(request.body.read()).get('Test', False)
+    remote_volumes = VOLUMES_PATH if not test else TEST_REMOTE_PATH
+    volumes = jsonloads(request.body.read())['Volumes']
+    remote_hosts = jsonloads(request.body.read())['Hosts']
+    port = os.getenv("SSH_PORT", '1122')
+    errors = list()
+    for volume_name in volumes:
+        local_volume_path = join(VOLUMES_PATH, volume_name)
+        remote_volume_path = join(remote_volumes, volume_name)
+        for remote_host in remote_hosts:
+            log.debug(
+                "Rsync volume: %s from host: %s",
+                local_volume_path, remote_host
+            )
+            try:
+                cmd = [
+                    'rsync', '-v', '-r', '-a', '-z', '-h', '-P',
+                    '--update',
+                    '-e', "ssh -p {}".format(port),
+                    '{}:{}/'.format(remote_host, remote_volume_path),
+                    local_volume_path,
+                ]
+                log.debug("runing %r", cmd)
+                run(cmd, check=True, stdout=PIPE, stderr=PIPE)
+            except Exception as ex:
+                err = getattr(ex, 'stderr', ex)
+                error_message = "Error while rsync {} from {} (cmd: {}): " \
+                                "{}".format(volume_name, remote_host, cmd, err)
+                log.error(error_message)
+                errors.append(error_message)
+                pass
+
+    return json.dumps({'Err': '\n'.join(errors)})
+
+
 @route('/VolumeDriver.Snapshot.Send', ['POST'])
 def snapshot_send():
     """The last sent snapshot is remembered by adding a suffix with the target
@@ -118,7 +156,7 @@ def snapshot_send():
     snapshot_name = jsonloads(request.body.read())['Name']
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     remote_host = jsonloads(request.body.read())['Host']
-    remote_snapshots = SNAPSHOTS_PATH if not test else TEST_RECEIVE_PATH
+    remote_snapshots = SNAPSHOTS_PATH if not test else TEST_REMOTE_PATH
     # take the latest snapshot suffixed with the target host
     sent_snapshots = sorted(
         [s for s in os.listdir(SNAPSHOTS_PATH)
