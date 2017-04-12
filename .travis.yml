@@ -4,7 +4,7 @@ services:
   - docker
 
 install:
-  - sudo apt-get -update -q
+  - sudo apt-get update -q
   - sudo apt-get install -y qemu-utils btrfs-tools
 
 before_script:
