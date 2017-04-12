@@ -145,6 +145,9 @@ in a file as follows (tested on Debian 8):
 * Stop docker / create required mount point and restart docker::
 
     $ sudo systemctl stop docker \
+        && sudo mkdir -p /var/lib/docker/volumes \
+        && sudo mkdir -p /var/lib/docker/snapshots \
+        && sudo mkdir -p var/lib/docker/received \
         && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/volumes \
         && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots \
         && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received \
