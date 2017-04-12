@@ -256,7 +256,7 @@ def scheduler(config=SCHEDULE, test=False):
                     log.info("Finished purging")
                     SCHEDULE_LOG[action][name] = now
                 if action.startswith('synchronize:'):
-                    log.info("Starting scheduled synchronize of %s", name)
+                    log.info("Starting scheduled synchronization of %s", name)
                     hosts = action.split(':')[1].split(',')
                     # do a snapshot to save state before pulling data
                     snap = snapshot(Arg(name=[name]), test=test)
@@ -344,7 +344,7 @@ def main():
 
     parser_sync = subparsers.add_parser(
         'sync', help='Sync a volume to another host')
-    parser_send.add_argument(
+    parser_sync.add_argument(
         'volumes', metavar='volumes', nargs=1,
         help='Volumes to sync (1 max at the moment)')
     parser_sync.add_argument(

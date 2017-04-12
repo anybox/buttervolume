@@ -1,12 +1,12 @@
 import json
 import os
-import shutil as _shutil
+import shutil
 import unittest
 import uuid
 import tempfile
 import time
-import warnings as _warnings
-import weakref as _weakref
+import warnings
+import weakref
 from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
@@ -581,14 +581,14 @@ class TemporaryDirectory(object):
 
     def __init__(self, path):
         self.name = self.mkdir(path)
-        self._finalizer = _weakref.finalize(
+        self._finalizer = weakref.finalize(
             self, self._cleanup, self.name,
             warn_message="Implicitly cleaning up {!r}".format(self))
 
     @classmethod
     def _cleanup(cls, name, warn_message):
-        _shutil.rmtree(name)
-        _warnings.warn(warn_message, ResourceWarning)
+        shutil.rmtree(name)
+        warnings.warn(warn_message, ResourceWarning)
 
     def mkdir(self, path):
         if os.path.isdir(path):
@@ -607,7 +607,7 @@ class TemporaryDirectory(object):
 
     def cleanup(self):
         if self._finalizer.detach():
-            _shutil.rmtree(self.name)
+            shutil.rmtree(self.name)
 
 
 if __name__ == '__main__':

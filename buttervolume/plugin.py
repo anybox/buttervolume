@@ -135,7 +135,7 @@ def volume_sync():
                     '{}:{}/'.format(remote_host, remote_volume_path),
                     local_volume_path,
                 ]
-                log.debug("runing %r", cmd)
+                log.debug("Running %r", cmd)
                 run(cmd, check=True, stdout=PIPE, stderr=PIPE)
             except Exception as ex:
                 err = getattr(ex, 'stderr', ex)
@@ -143,7 +143,6 @@ def volume_sync():
                                 "{}".format(volume_name, remote_host, cmd, err)
                 log.error(error_message)
                 errors.append(error_message)
-                pass
 
     return json.dumps({'Err': '\n'.join(errors)})
 
