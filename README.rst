@@ -1,3 +1,8 @@
+.. image:: https://travis-ci.org/anybox/buttervolume.svg?branch=master
+   :target: https://travis-ci.org/anybox/buttervolume
+   :alt: Travis state
+
+
 BTRFS Volume plugin for Docker
 ==============================
 
