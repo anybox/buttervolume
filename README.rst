@@ -9,6 +9,9 @@ BTRFS Volume plugin for Docker
 This package provides a Docker volume plugin that creates a BTRFS subvolume for
 each container volume.
 
+Please note this is **not** a BTRFS storage driver for Docker, but a plugin to manage only
+volumes. It means you can use any storage driver, such as AUFS, this is independant topic.
+
 .. contents::
 
 Introduction
