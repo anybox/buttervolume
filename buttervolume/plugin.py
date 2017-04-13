@@ -286,6 +286,7 @@ def snapshots_purge():
     """
     params = jsonloads(request.body.read())
     volume_name = params['Name']
+    dryrun = params.get('Dryrun', False)
     try:
         pattern = sorted(int(i) for i in params['Pattern'].split(':'))
         assert(len(pattern) >= 2)
@@ -319,9 +320,16 @@ def snapshots_purge():
                 # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)
                 timeframe = age // age_segment[0]
                 # delete if we already had a snapshot in the same timeframe
+                # or if the snapshot is very old
                 if timeframe == last_timeframe or age > max_age:
-                    btrfs.Subvolume(
-                        join(SNAPSHOTS_PATH, snapshots[i])).delete()
+                    snapshot = snapshots[i]
+                    if dryrun:
+                        log.info('(Dry run) Would delete snapshot {}'
+                                 .format(snapshot))
+                    else:
+                        btrfs.Subvolume(
+                            join(SNAPSHOTS_PATH, snapshot)).delete()
+                        log.info('Deleted snapshot {}'.format(snapshot))
                 last_timeframe = timeframe
     except Exception as e:
         return json.dumps({'Err': e.strerror})
