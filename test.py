@@ -31,9 +31,17 @@ class TestCase(unittest.TestCase):
         self.app = TestApp(cli.app)
         # check we have a btrfs
         btrfs.Filesystem(VOLUMES_PATH).label()
+        self.cleanup()
 
     def tearDown(self):
         self.cleanup()
+
+    def create_a_volume_with_a_file(self, name):
+        # create a volume with a file
+        path = join(VOLUMES_PATH, name)
+        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        with open(join(path, 'foobar'), 'w') as f:
+            f.write('foobar')
 
     def test(self):
         """first basic scenario
@@ -126,10 +134,10 @@ class TestCase(unittest.TestCase):
     def test_disable_cow(self):
         """Putting a .nocow file in the volume creation should disable cow
         """
-        # create a volume
+        # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
+        self.create_a_volume_with_a_file(name)
 
         # put the nocow command
         os.system('touch {}'.format(join(path, '_data', '.nocow')))
@@ -148,9 +156,7 @@ class TestCase(unittest.TestCase):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name)
         # snapshot
         resp = self.app.post('/VolumeDriver.Snapshot',
                              json.dumps({'Name': name}))
@@ -193,9 +199,7 @@ class TestCase(unittest.TestCase):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name)
         # snapshot the volume
         resp = self.app.post('/VolumeDriver.Snapshot',
                              json.dumps({'Name': name}))
@@ -211,15 +215,9 @@ class TestCase(unittest.TestCase):
         """
         # create two volumes with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
-        path = join(VOLUMES_PATH, name)
+        self.create_a_volume_with_a_file(name)
         name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
-        path2 = join(VOLUMES_PATH, name2)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
-        with open(join(path2, 'foobar2'), 'w') as f:
-            f.write('foobar2')
+        self.create_a_volume_with_a_file(name2)
         # snapshot each volume twice
         resp = self.app.post('/VolumeDriver.Snapshot',
                              json.dumps({'Name': name}))
@@ -248,17 +246,11 @@ class TestCase(unittest.TestCase):
     def test_schedule_snapshot(self):
         """check we can schedule actions such as snapshots
         """
-        # create a volume with a file
+        # create two volumes with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        self.create_a_volume_with_a_file(name)
         name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
-        path = join(VOLUMES_PATH, name)
-        path2 = join(VOLUMES_PATH, name2)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name2}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
-        with open(join(path2, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name2)
         # check we have no schedule
         resp = self.app.get('/VolumeDriver.Schedule.List')
         schedule = json.loads(resp.body.decode())['Schedule']
@@ -314,10 +306,7 @@ class TestCase(unittest.TestCase):
     def test_schedule_replicate(self):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
-        path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name)
         # check we have no schedule
         resp = self.app.get('/VolumeDriver.Schedule.List')
         schedule = json.loads(resp.body.decode())['Schedule']
@@ -357,9 +346,7 @@ class TestCase(unittest.TestCase):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('original foobar')
+        self.create_a_volume_with_a_file(name)
         # snapshot the volume
         resp = self.app.post('/VolumeDriver.Snapshot',
                              json.dumps({'Name': name}))
@@ -372,12 +359,26 @@ class TestCase(unittest.TestCase):
                              json.dumps({'Name': snapshot}))
         # check the volume has the original content
         with open(join(path, 'foobar')) as f:
-            self.assertEqual(f.read(), 'original foobar')
+            self.assertEqual(f.read(), 'foobar')
         # check we have another snapshot with the volume backup
         volume_backup = json.loads(resp.body.decode())['VolumeBackup']
         path = join(SNAPSHOTS_PATH, volume_backup)
         with open(join(path, 'foobar')) as f:
             self.assertEqual(f.read(), 'modified foobar')
+
+    def create_20_hourly_snapshots(self, name):
+        path = join(VOLUMES_PATH, name)
+        hours = [(datetime.now() - timedelta(hours=h)).isoformat()
+                 for h in range(20)]
+        for h in hours:
+            run('btrfs subvolume snapshot {} {}@{}'.format(
+                path, join(SNAPSHOTS_PATH, name), h), shell=True)
+        snapshot = datetime.now().isoformat() + '@127.1.2.3'
+        run('btrfs subvolume snapshot {} {}@{}'.format(
+            path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
+        snapshot = 'other_snap'
+        run('btrfs subvolume snapshot {} {}@{}'.format(
+            path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
 
     def test_purge(self):
         """Check we can purge snapshots with a save pattern
@@ -386,29 +387,14 @@ class TestCase(unittest.TestCase):
         # first run the purge without snapshots (should do nothing)
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '2h:2h'}))
-        path = join(VOLUMES_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('original foobar')
+        # create a volume with a file
+        self.create_a_volume_with_a_file(name)
 
         def cleanup_snapshots():
             btrfs.Subvolume(join(SNAPSHOTS_PATH, PREFIX_TEST_VOLUME) + '*'
                             ).delete(check=False)
 
-        def create_20_hourly_snapshots():
-            hours = [(datetime.now() - timedelta(hours=h)).isoformat()
-                     for h in range(20)]
-            for h in hours:
-                run('btrfs subvolume snapshot {} {}@{}'.format(
-                    path, join(SNAPSHOTS_PATH, name), h), shell=True)
-            snapshot = datetime.now().isoformat() + '@127.1.2.3'
-            run('btrfs subvolume snapshot {} {}@{}'.format(
-                path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
-            snapshot = 'other_snap'
-            run('btrfs subvolume snapshot {} {}@{}'.format(
-                path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
-
-        create_20_hourly_snapshots()
+        self.create_20_hourly_snapshots(name)
         # run the purge with a simple save pattern (2h only once)
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
@@ -425,7 +411,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps-1)
 
         cleanup_snapshots()
-        create_20_hourly_snapshots()
+        self.create_20_hourly_snapshots(name)
         # run the purge with a more complex save pattern (2h:4h:8h:16h)
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post(
@@ -436,7 +422,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 11)
 
         cleanup_snapshots()
-        create_20_hourly_snapshots()
+        self.create_20_hourly_snapshots(name)
         # check we have an error with a non numeric pattern
         resp = self.app.post(
             '/VolumeDriver.Snapshots.Purge',
@@ -453,6 +439,24 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
         cleanup_snapshots()
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+
+    def test_schedule_purge(self):
+        # create a volume with a file
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        self.create_a_volume_with_a_file(name)
+        self.create_20_hourly_snapshots(name)
+        # schedule a purge of the volumes
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'purge:2h:2h', 'Timer': 60}))
+        SCHEDULE_LOG.setdefault('purge:2h:2h', {})
+        SCHEDULE_LOG['purge:2h:2h'
+                     ][name] = datetime.now() - timedelta(minutes=90)
+        nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
+        scheduler(SCHEDULE, test=True)
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
+        # unschedule
+        self.app.post('/VolumeDriver.Schedule', json.dumps(
+            {'Name': name, 'Action': 'purge:2h:2h', 'Timer': 0}))
 
 
 if __name__ == '__main__':

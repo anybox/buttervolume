@@ -157,15 +157,19 @@ def remove(args):
     return res
 
 
-def purge(args):
+def purge(args, test=False):
     urlpath = '/VolumeDriver.Snapshots.Purge'
     param = {'Name': args.name[0],
-             'Pattern': args.pattern[0],
+             'Pattern': args.pattern,
              'Dryrun': args.dryrun}
-    resp = Session().post(
-        'http+unix://{}{}'
-        .format(urllib.parse.quote_plus(SOCKET), urlpath),
-        json.dumps(param))
+    if test:
+        param['Test'] = True
+        resp = TestApp(app).post(urlpath, json.dumps(param))
+    else:
+        resp = Session().post(
+            'http+unix://{}{}'
+            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            json.dumps(param))
     res = get_from(resp, '')
     if res:
         print(res)
@@ -230,7 +234,8 @@ def scheduler(config=SCHEDULE, test=False):
                     _, pattern = action.split(':', 1)
                     log.info("Starting scheduled purge of %s with pattern %s",
                              name, pattern)
-                    purge(Arg(name=[name], pattern=pattern, dryrun=False))
+                    purge(Arg(name=[name], pattern=pattern, dryrun=False),
+                          test=test)
                     log.info("Finished purging")
                     SCHEDULE_LOG[action][name] = now
 
