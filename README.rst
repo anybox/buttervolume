@@ -188,6 +188,12 @@ You can purge old snapshot corresponding to the specified volume, using a retent
 
     $ buttervolume purge <pattern> <volume>
 
+If you're unsure whether you retention pattern is correct, you can run the
+purge with the ``--dryrun`` option, to inspect what snapshots would be deleted,
+without deleting them::
+
+    $ buttervolume purge --dryrun <pattern> <volume>
+
 ``<volume>`` is the name of the volume, not the full path. It is expected
 to live in ``/var/lib/docker/volumes``.
 
