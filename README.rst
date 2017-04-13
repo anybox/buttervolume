@@ -199,9 +199,10 @@ without deleting them::
 ``<volume>`` is the name of the volume, not the full path. It is expected
 to live in ``/var/lib/docker/volumes``.
 
-``<pattern>`` is the snapshot retention pattern. It is a semicolon-separated list of
-time length specifiers with a unit. Units can be ``m`` for minutes, ``h`` for
-hours, ``d`` for days, ``w`` for weeks, ``y`` for years.
+``<pattern>`` is the snapshot retention pattern. It is a semicolon-separated
+list of time length specifiers with a unit. Units can be ``m`` for minutes,
+``h`` for hours, ``d`` for days, ``w`` for weeks, ``y`` for years. The pattern
+should have at least 2 items.
 
 Here are a few examples of retention patterns:
 
