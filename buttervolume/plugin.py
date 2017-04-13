@@ -276,7 +276,7 @@ def snapshot_restore():
 @route('/VolumeDriver.Snapshots.Purge', ['POST'])
 def snapshots_purge():
     """
-    Purge snapshots with a save pattern
+    Purge snapshots with a retention pattern
     (see cli help)
     """
     params = jsonloads(request.body.read())

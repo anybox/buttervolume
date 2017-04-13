@@ -384,7 +384,7 @@ class TestCase(unittest.TestCase):
     def test_purge(self):
         """Check we can purge snapshots with a save pattern
         """
-        name = 'buttervolume-test-' + uuid.uuid4().hex
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         # first run the purge without snapshots (should do nothing)
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '2h:2h'}))
@@ -395,7 +395,7 @@ class TestCase(unittest.TestCase):
 
         def cleanup_snapshots():
             for s in os.listdir(SNAPSHOTS_PATH):
-                if s.startswith('buttervolume-test-'):
+                if s.startswith(PREFIX_TEST_VOLUME):
                     btrfs.Subvolume(join(SNAPSHOTS_PATH, s)).delete()
 
         def create_20_hourly_snapshots():
