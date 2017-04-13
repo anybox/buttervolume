@@ -427,58 +427,67 @@ class TestCase(unittest.TestCase):
         # first run the purge without snapshots (should do nothing)
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '120'}))
-        # create 20 hourly snapshots corresponding to different times
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
             f.write('original foobar')
-        
-        hours = [(datetime.now() - timedelta(hours=h)).isoformat()
-                 for h in range(20)]
-        for h in hours:
-            run('btrfs subvolume snapshot {} {}@{}'.format(
-                path, join(SNAPSHOTS_PATH, name), h), shell=True)
-        # run the purge with a simple save pattern (2h)
-        nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120'}))
-        # check we have 10 snapshots left
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)) = nb_snaps - 10)
-        # run the purge again and check we still have 10 snapshots
-        nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120'}))
-        # check we deleted 10 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)) = nb_snaps)
 
-        # create 20 hourly snapshots corresponding to different times
-        hours = [(datetime.now() - timedelta(hours=h)).isoformat()
-                 for h in range(20)]
-        for h in hours:
-            run('btrfs subvolume snapshot {} {}@{}'.format(
-                path, join(SNAPSHOTS_PATH, name), h), shell=True)
+        def cleanup_snapshots():
+            for s in os.listdir(SNAPSHOTS_PATH):
+                if s.startswith('buttervolume-test-'):
+                    btrfs.Subvolume(join(SNAPSHOTS_PATH, s)).delete()
+
+        def create_20_hourly_snapshots():
+            hours = [(datetime.now() - timedelta(hours=h)).isoformat()
+                     for h in range(20)]
+            for h in hours:
+                run('btrfs subvolume snapshot {} {}@{}'.format(
+                    path, join(SNAPSHOTS_PATH, name), h), shell=True)
+
+        create_20_hourly_snapshots()
+        # run the purge with a simple save pattern (2h only once)
+        nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
+        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
+                             json.dumps({'Name': name, 'Pattern': '120:120'}))
+        self.assertEqual(jsonloads(resp.body), {'Err': ''})
+        # check we deleted 17 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
+        # run the purge again and check we still have the same nb of snapshots
+        nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
+        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
+                             json.dumps({'Name': name, 'Pattern': '120:120'}))
+        self.assertEqual(jsonloads(resp.body), {'Err': ''})
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps)
+
+        cleanup_snapshots()
+        create_20_hourly_snapshots()
         # run the purge with a more complex save pattern (2h:4h:8h:16h)
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120:240:480:960'}))
-        # check we deleted 15 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)) = nb_snaps - 15)
+        resp = self.app.post(
+            '/VolumeDriver.Snapshots.Purge',
+            json.dumps({'Name': name, 'Pattern': '120:240:480:960'}))
+        self.assertEqual(jsonloads(resp.body), {'Err': ''})
+        # check we deleted 14 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
 
-        # create 20 hourly snapshots corresponding to different times
-        hours = [(datetime.now() - timedelta(hours=h)).isoformat()
-                 for h in range(20)]
-        for h in hours:
-            run('btrfs subvolume snapshot {} {}@{}'.format(
-                path, join(SNAPSHOTS_PATH, name), h), shell=True)
+        cleanup_snapshots()
+        create_20_hourly_snapshots()
         # check we have an error with a non numeric pattern
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '60:plop:3000'}))
-        # run the purge with a more complex unsorted save pattern (1h:2h:3h:4h:5h)
+        resp = self.app.post(
+            '/VolumeDriver.Snapshots.Purge',
+            json.dumps({'Name': name, 'Pattern': '60:plop:3000'}))
+        self.assertEqual(jsonloads(resp.body),
+                         {'Err': 'Invalid purge pattern'})
+        # run the purge with a more complex unsorted save pattern
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '60:120:300:240:180'}))
-        # check we deleted 13 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)) = nb_snaps - 13)
+        resp = self.app.post(
+            '/VolumeDriver.Snapshots.Purge',
+            json.dumps({'Name': name, 'Pattern': '60:120:300:240:180'}))
+        self.assertEqual(jsonloads(resp.body), {'Err': ''})
+        # check we deleted 15 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 15)
+        cleanup_snapshots()
+        self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
 
 if __name__ == '__main__':

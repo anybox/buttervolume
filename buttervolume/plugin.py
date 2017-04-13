@@ -177,7 +177,7 @@ def volume_snapshot():
     try:
         btrfs.Subvolume(path).snapshot(snapshot_path, readonly=True)
     except Exception as e:
-        return {'Err': str(e)}
+        return json.dumps({'Err': str(e)})
     return json.dumps({'Err': '', 'Snapshot': timestamped})
 
 
@@ -199,7 +199,7 @@ def snapshot_delete():
     try:
         btrfs.Subvolume(path).delete()
     except Exception as e:
-        return {'Err': str(e)}
+        return json.dumps({'Err': str(e)})
     return json.dumps({'Err': ''})
 
 
@@ -252,7 +252,7 @@ def snapshot_restore():
         snapshots = os.listdir(SNAPSHOTS_PATH)
         snapshots = [s for s in snapshots if s.startswith(volume_name + '@')]
         if not snapshots:
-            return {'Err': ''}
+            return json.dumps({'Err': ''})
         snapshot_name = sorted(snapshots)[-1]
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     snapshot = btrfs.Subvolume(snapshot_path)
@@ -273,3 +273,56 @@ def snapshot_restore():
     else:
         res['Err'] = 'No such snapshot'
     return json.dumps(res)
+
+
+@route('/VolumeDriver.Snapshots.Purge', ['POST'])
+def snapshots_purge():
+    """
+    Purge snapshots with a save pattern
+    x:y : keep 1 snapshot every x minutes during the first y minutes.
+    x:y:z : keep 1 snapshot every x minutes during the first y minutes,
+            then 1 snapshot every y minutes during the next z minutes
+    x:y:z:t : keep 1 snapshot every x minutes during... (same)
+    """
+    params = jsonloads(request.body.read())
+    volume_name = params['Name']
+    try:
+        pattern = sorted(int(i) for i in params['Pattern'].split(':'))
+        assert(len(pattern) >= 2)
+        max_age = pattern[-1]
+    except:
+        return {'Err': 'Invalid purge pattern'}
+    # snapshots related to the volume, more recents first
+    snapshots = sorted([s for s in os.listdir(SNAPSHOTS_PATH)
+                        if s.startswith(volume_name + '@')], reverse=True)
+    now = datetime.now()
+    # Age of the snapshots in minutes.
+    # Example : [30, 70, 90, 150, 210, ..., 4000]
+    snapshots_age = [int((now - datetime.strptime(
+                        s.split('@')[1],
+                        "%Y-%m-%dT%H:%M:%S.%f")).total_seconds())//60
+                     for s in snapshots]
+    if not snapshots:
+        return {'Err': ''}
+    # pattern = 60:180:3600
+    # age segments = [(60, 180), (180, 3600)]
+    try:
+        for age_segment in [(pattern[i], pattern[i+1])
+                            for i, p in enumerate(pattern[:-1])]:
+            last_timeframe = -1
+            for i, age in enumerate(snapshots_age):
+                # if the age is outside the age_segment, delete nothing.
+                # Only 70 and 90 are inside the age_segment (60, 180)
+                if age < age_segment[0] or age >= age_segment[1] < max_age:
+                    continue
+                # Now get the timeframe of the snapshot.
+                # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)
+                timeframe = age // age_segment[0]
+                # delete if we already had a snapshot in the same timeframe
+                if timeframe == last_timeframe or age > max_age:
+                    btrfs.Subvolume(
+                        join(SNAPSHOTS_PATH, snapshots[i])).delete()
+                last_timeframe = timeframe
+    except Exception as e:
+        return json.dumps({'Err': e.strerror})
+    return json.dumps({'Err': ''})
