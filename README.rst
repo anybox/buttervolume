@@ -9,6 +9,8 @@ BTRFS Volume plugin for Docker
 This package provides a Docker volume plugin that creates a BTRFS subvolume for
 each container volume.
 
+.. contents::
+
 Introduction
 ************
 
