@@ -279,16 +279,15 @@ def snapshot_restore():
 def snapshots_purge():
     """
     Purge snapshots with a save pattern
-    x:y : keep 1 snapshot every x minutes during the first y minutes.
-    x:y:z : keep 1 snapshot every x minutes during the first y minutes,
-            then 1 snapshot every y minutes during the next z minutes
-    x:y:z:t : keep 1 snapshot every x minutes during... (same)
+    (see cli help)
     """
     params = jsonloads(request.body.read())
     volume_name = params['Name']
     dryrun = params.get('Dryrun', False)
+    units = {'m': 1, 'h': 60, 'd': 60*24, 'w': 60*24*7, 'y': 60*24*365}
     try:
-        pattern = sorted(int(i) for i in params['Pattern'].split(':'))
+        pattern = sorted(int(i[:-1])*units[i[-1]]
+                         for i in params['Pattern'].split(':'))
         assert(len(pattern) >= 2)
         max_age = pattern[-1]
     except:
@@ -314,7 +313,7 @@ def snapshots_purge():
             for i, age in enumerate(snapshots_age):
                 # if the age is outside the age_segment, delete nothing.
                 # Only 70 and 90 are inside the age_segment (60, 180)
-                if age < age_segment[0] or age >= age_segment[1] < max_age:
+                if age <= age_segment[0] or age >= age_segment[1] < max_age:
                     continue
                 # Now get the timeframe of the snapshot.
                 # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)

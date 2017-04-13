@@ -426,7 +426,7 @@ class TestCase(unittest.TestCase):
         name = 'buttervolume-test-' + uuid.uuid4().hex
         # first run the purge without snapshots (should do nothing)
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120'}))
+                             json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         path = join(VOLUMES_PATH, name)
         self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
         with open(join(path, 'foobar'), 'w') as f:
@@ -448,14 +448,14 @@ class TestCase(unittest.TestCase):
         # run the purge with a simple save pattern (2h only once)
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120:120'}))
+                             json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
         # check we deleted 17 snapshots
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
         # run the purge again and check we still have the same nb of snapshots
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '120:120'}))
+                             json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps)
 
@@ -465,27 +465,27 @@ class TestCase(unittest.TestCase):
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post(
             '/VolumeDriver.Snapshots.Purge',
-            json.dumps({'Name': name, 'Pattern': '120:240:480:960'}))
+            json.dumps({'Name': name, 'Pattern': '2h:4h:8h:16h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        # check we deleted 14 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
+        # check we deleted 11 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 11)
 
         cleanup_snapshots()
         create_20_hourly_snapshots()
         # check we have an error with a non numeric pattern
         resp = self.app.post(
             '/VolumeDriver.Snapshots.Purge',
-            json.dumps({'Name': name, 'Pattern': '60:plop:3000'}))
+            json.dumps({'Name': name, 'Pattern': '60m:plop:3000m'}))
         self.assertEqual(jsonloads(resp.body),
                          {'Err': 'Invalid purge pattern'})
         # run the purge with a more complex unsorted save pattern
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post(
             '/VolumeDriver.Snapshots.Purge',
-            json.dumps({'Name': name, 'Pattern': '60:120:300:240:180'}))
+            json.dumps({'Name': name, 'Pattern': '60m:120m:300m:240m:180m'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        # check we deleted 15 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 15)
+        # check we deleted 14 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
         cleanup_snapshots()
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 

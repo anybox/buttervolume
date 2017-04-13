@@ -157,6 +157,21 @@ def remove(args):
     return res
 
 
+def purge(args):
+    urlpath = '/VolumeDriver.Snapshots.Purge'
+    param = {'Name': args.name[0],
+             'Pattern': args.pattern[0],
+             'Dryrun': args.dryrun}
+    resp = Session().post(
+        'http+unix://{}{}'
+        .format(urllib.parse.quote_plus(SOCKET), urlpath),
+        json.dumps(param))
+    res = get_from(resp, '')
+    if res:
+        print(res)
+    return res
+
+
 class Arg():
     def __init__(self, *a, **kw):
         for k, v in kw.items():
@@ -195,12 +210,18 @@ def scheduler(config=SCHEDULE, test=False):
                 if action == "snapshot":
                     log.info("Running scheduled snapshot of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
+                    if not snap:
+                        log.info("Could not snapshot %s", name)
+                        continue
                     log.info("Successfully snapshotted to %s", snap)
                     SCHEDULE_LOG[action][name] = now
                 if action.startswith('replicate:'):
                     _, host = action.split(':')
                     log.info("Running scheduled replication of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
+                    if not snap:
+                        log.info("Could not snapshot %s", name)
+                        continue
                     log.info("Successfully snapshotted to %s", snap)
                     send(Arg(snapshot=[snap], host=[host]), test=test)
                     log.info("Successfully replicated %s to %s", name, snap)
@@ -278,6 +299,23 @@ def main():
         'rm', help='Delete a snapshot')
     parser_remove.add_argument(
         'name', metavar='name', nargs=1, help='Name of the snapshot to delete')
+    parser_purge = subparsers.add_parser(
+        'purge', help="Purge old snapshot using a purge pattern")
+    parser_purge.add_argument(
+        'pattern', metavar='pattern', nargs=1,
+        help=("Purge pattern (X:Y, or X:Y:Z, or X:Y:Z:T, etc.)\n"
+              "Pattern components must have a suffix with the unit:\n"
+              "  m = minutes, h = hours, d = days, w = weeks, y = years\n"
+              "So 4h:1d:1w means:\n"
+              "  keep 1 snapshot every 4 hours during 1 day,\n"
+              "  then keep 1 snapshot every day during the 1st week\n"
+              "  then delete snapshots older than 1 week.\n"))
+    parser_purge.add_argument(
+        'name', metavar='name', nargs=1,
+        help=("Name of the volume whose snapshots are to purge"))
+    parser_purge.add_argument(
+        '--dryrun', action='store_true',
+        help="Don't really purge but tell what would be deleted")
 
     parser_run.set_defaults(func=run)
     parser_snapshot.set_defaults(func=snapshot)
@@ -287,6 +325,7 @@ def main():
     parser_restore.set_defaults(func=restore)
     parser_send.set_defaults(func=send)
     parser_remove.set_defaults(func=remove)
+    parser_purge.set_defaults(func=purge)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):
