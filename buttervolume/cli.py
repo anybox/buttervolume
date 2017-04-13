@@ -160,7 +160,7 @@ def remove(args):
 def purge(args, test=False):
     urlpath = '/VolumeDriver.Snapshots.Purge'
     param = {'Name': args.name[0],
-             'Pattern': args.pattern,
+             'Pattern': args.pattern[0],
              'Dryrun': args.dryrun}
     if test:
         param['Test'] = True
@@ -234,7 +234,7 @@ def scheduler(config=SCHEDULE, test=False):
                     _, pattern = action.split(':', 1)
                     log.info("Starting scheduled purge of %s with pattern %s",
                              name, pattern)
-                    purge(Arg(name=[name], pattern=pattern, dryrun=False),
+                    purge(Arg(name=[name], pattern=[pattern], dryrun=False),
                           test=test)
                     log.info("Finished purging")
                     SCHEDULE_LOG[action][name] = now
