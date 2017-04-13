@@ -208,7 +208,7 @@ def scheduler(config=SCHEDULE, test=False):
                     continue
                 # choose and run the right action
                 if action == "snapshot":
-                    log.info("Running scheduled snapshot of %s", name)
+                    log.info("Starting scheduled snapshot of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
                     if not snap:
                         log.info("Could not snapshot %s", name)
@@ -217,7 +217,7 @@ def scheduler(config=SCHEDULE, test=False):
                     SCHEDULE_LOG[action][name] = now
                 if action.startswith('replicate:'):
                     _, host = action.split(':')
-                    log.info("Running scheduled replication of %s", name)
+                    log.info("Starting scheduled replication of %s", name)
                     snap = snapshot(Arg(name=[name]), test=test)
                     if not snap:
                         log.info("Could not snapshot %s", name)
@@ -226,6 +226,14 @@ def scheduler(config=SCHEDULE, test=False):
                     send(Arg(snapshot=[snap], host=[host]), test=test)
                     log.info("Successfully replicated %s to %s", name, snap)
                     SCHEDULE_LOG[action][name] = now
+                if action.startswith('purge:'):
+                    _, pattern = action.split(':', 1)
+                    log.info("Starting scheduled purge of %s with pattern %s",
+                             name, pattern)
+                    purge(Arg(name=[name], pattern=pattern, dryrun=False))
+                    log.info("Finished purging")
+                    SCHEDULE_LOG[action][name] = now
+
             except CalledProcessError as e:
                 log.error('Error processing scheduler action file %s '
                           'name=%s, action=%s, timer=%s, '
@@ -269,10 +277,11 @@ def main():
         'name', metavar='name', nargs='?',
         help='Name of the volume whose snapshots are to list')
     parser_schedule = subparsers.add_parser(
-        'schedule', help='(un)Schedule a snapshot or replication')
+        'schedule', help='(un)Schedule a snapshot, replication or purge')
     parser_schedule.add_argument(
         'action', metavar='action', nargs=1,
-        help='Name of the action to schedule (snapshot, replicate:<host>)')
+        help=('Name of the action to schedule '
+              '(snapshot, replicate:<host>, purge:<pattern>)'))
     parser_schedule.add_argument(
         'timer', metavar='timer', nargs=1, type=int,
         help='Time span in minutes between two actions')
