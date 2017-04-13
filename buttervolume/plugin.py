@@ -40,7 +40,7 @@ def volume_create():
     try:
         btrfs.Subvolume(volpath).create()
     except Exception as e:
-        return {'Err': e.strerror}
+        return json.dumps({'Err': e.strerror})
     return json.dumps({'Err': ''})
 
 
@@ -93,6 +93,7 @@ def volume_remove():
     try:
         btrfs.Subvolume(path).delete()
     except Exception:
+        log.error('%s: no such volume', name)
         return json.dumps({'Err': '{}: no such volume'.format(name)})
     return json.dumps({'Err': ''})
 
@@ -175,6 +176,7 @@ def volume_snapshot():
     try:
         btrfs.Subvolume(path).snapshot(snapshot_path, readonly=True)
     except Exception as e:
+        log.error("Error creating snapshot: %s", str(e))
         return json.dumps({'Err': str(e)})
     return json.dumps({'Err': '', 'Snapshot': timestamped})
 
@@ -197,6 +199,7 @@ def snapshot_delete():
     try:
         btrfs.Subvolume(path).delete()
     except Exception as e:
+        log.error("Error deleting snapshot: %s", str(e))
         return json.dumps({'Err': str(e)})
     return json.dumps({'Err': ''})
 
@@ -289,19 +292,26 @@ def snapshots_purge():
         assert(len(pattern) >= 2)
         max_age = pattern[-1]
     except:
-        return {'Err': 'Invalid purge pattern'}
+        log.error("Invalid purge pattern: %s", params['Pattern'])
+        return json.dumps({'Err': 'Invalid purge pattern'})
     # snapshots related to the volume, more recents first
-    snapshots = sorted([s for s in os.listdir(SNAPSHOTS_PATH)
-                        if s.startswith(volume_name + '@')], reverse=True)
+    snapshots = sorted((s for s in os.listdir(SNAPSHOTS_PATH)
+                        if s.startswith(volume_name + '@')), reverse=True)
     now = datetime.now()
     # Age of the snapshots in minutes.
     # Example : [30, 70, 90, 150, 210, ..., 4000]
-    snapshots_age = [int((now - datetime.strptime(
-                        s.split('@')[1],
-                        "%Y-%m-%dT%H:%M:%S.%f")).total_seconds())//60
-                     for s in snapshots]
+    snapshots_age = []
+    for s in snapshots:
+        try:
+            snapshots_age.append(
+                int((now - datetime.strptime(
+                    s.split('@')[1], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds()
+                    )//60)
+        except:
+            log.info("Skipping purge of %s with invalid date format", s)
+            continue
     if not snapshots:
-        return {'Err': ''}
+        return json.dumps({'Err': ''})
     # pattern = 60:180:3600
     # age segments = [(60, 180), (180, 3600)]
     try:
@@ -329,5 +339,6 @@ def snapshots_purge():
                         log.info('Deleted snapshot {}'.format(snapshot))
                 last_timeframe = timeframe
     except Exception as e:
+        log.error("Error purging snapshots: %s", e.strerror)
         return json.dumps({'Err': e.strerror})
     return json.dumps({'Err': ''})

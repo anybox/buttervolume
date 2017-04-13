@@ -178,7 +178,8 @@ consuming a lot of bandwith or disk space::
     $ buttervolume send <host> <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
-to live in ``/var/lib/docker/snapshots``.
+to live in ``/var/lib/docker/snapshots`` and is replicated to the same path on
+the remote host.
 
 
 ``<host>`` is the hostname or IP address of the remote host. The snapshot is
@@ -210,16 +211,17 @@ should have at least 2 items.
 Here are a few examples of retention patterns:
 
 - ``4h:1d:2w:2y``
-    keep only one snapshot every four hours during the first
-    day, then one snapshot per day during the first two weeks, then one snapshot
-    every two weeks during the first two years, then delete everything after two
-    years.
+    Keep all snapshots in the last four hours, then keep only one snapshot
+    every four hours during the first day, then one snapshot per day during
+    the first two weeks, then one snapshot every two weeks during the first
+    two years, then delete everything after two years.
 
 - ``4h:1w``
-    keep only one snapshot every four hours during the first week, then delete older snapshots.
+    keep all snapshots during the last four hours, then one snapshot every
+    four hours during the first week, then delete older snapshots.
 
 - ``2h:2h``
-    keep only one snapshot during the first two hours, then delete older snapshots.
+    keep all snapshots during the last two hours, then delete older snapshots.
 
 Schedule a job
 --------------
@@ -244,9 +246,10 @@ Remove the same schedule::
 
     $ buttervolume schedule replicate:remote_host 0 foovolume
 
-**Schedule a purge** every hour of all the snapshots of volume ``foovolume``, and keep only
-one snapshot every 4 hours during the first week, then one snapshot every week
-during one year, then delete all snapshots after one year::
+**Schedule a purge** every hour of the snapshots of volume ``foovolume``, but
+keep all the snapshots in the last 4 hours, then only one snapshot every 4
+hours during the first week, then one snapshot every week during one year, then
+delete all snapshots after one year::
 
     $ buttervolume schedule purge:4h:1w:1y 60 foovolume
 
@@ -262,8 +265,8 @@ simplest ones to more elaborate ones. A common one is the following::
     $ buttervolume schedule purge:1d:4w:1y 1440 <volume>
 
 It should create a snapshot every day, then purge snapshots everydays while
-keeping one snapshot per day during one month, then one snapshot per month
-during only one year.
+keeping all snapshots in the last 24h, then one snapshot per day during one
+month, then one snapshot per month during only one year.
 
 
 List scheduled jobs

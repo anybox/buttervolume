@@ -22,19 +22,17 @@ PREFIX_TEST_VOLUME = 'buttervolume-test-'
 class TestCase(unittest.TestCase):
 
     def cleanup(self):
-        # clean-up test volumes and snapshots before each test
-        btrfs.Subvolume(
-            join(VOLUMES_PATH, PREFIX_TEST_VOLUME) + '*').delete(check=False)
-        btrfs.Subvolume(
-            join(SNAPSHOTS_PATH, PREFIX_TEST_VOLUME) + '*').delete(check=False)
-        btrfs.Subvolume(
-            join(TEST_RECEIVE_PATH, PREFIX_TEST_VOLUME) + '*'
-        ).delete(check=False)
+        """clean-up test volumes and snapshots before each test"""
+        for directory in (VOLUMES_PATH, SNAPSHOTS_PATH, TEST_RECEIVE_PATH):
+            btrfs.Subvolume(
+                join(directory, PREFIX_TEST_VOLUME) + '*').delete(check=False)
 
     def setUp(self):
         self.app = TestApp(cli.app)
         # check we have a btrfs
         btrfs.Filesystem(VOLUMES_PATH).label()
+
+    def tearDown(self):
         self.cleanup()
 
     def test(self):
@@ -394,9 +392,8 @@ class TestCase(unittest.TestCase):
             f.write('original foobar')
 
         def cleanup_snapshots():
-            for s in os.listdir(SNAPSHOTS_PATH):
-                if s.startswith(PREFIX_TEST_VOLUME):
-                    btrfs.Subvolume(join(SNAPSHOTS_PATH, s)).delete()
+            btrfs.Subvolume(join(SNAPSHOTS_PATH, PREFIX_TEST_VOLUME) + '*'
+                            ).delete(check=False)
 
         def create_20_hourly_snapshots():
             hours = [(datetime.now() - timedelta(hours=h)).isoformat()
@@ -404,6 +401,12 @@ class TestCase(unittest.TestCase):
             for h in hours:
                 run('btrfs subvolume snapshot {} {}@{}'.format(
                     path, join(SNAPSHOTS_PATH, name), h), shell=True)
+            snapshot = datetime.now().isoformat() + '@127.1.2.3'
+            run('btrfs subvolume snapshot {} {}@{}'.format(
+                path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
+            snapshot = 'other_snap'
+            run('btrfs subvolume snapshot {} {}@{}'.format(
+                path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
 
         create_20_hourly_snapshots()
         # run the purge with a simple save pattern (2h only once)
@@ -413,12 +416,13 @@ class TestCase(unittest.TestCase):
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
         # check we deleted 17 snapshots
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
-        # run the purge again and check we still have the same nb of snapshots
+        # run the purge again and check we have one more snapshot deleted,
+        # the oldest at the limit
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps)
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps-1)
 
         cleanup_snapshots()
         create_20_hourly_snapshots()
@@ -452,4 +456,4 @@ class TestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
