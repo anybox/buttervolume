@@ -1,11 +1,9 @@
 import json
 import os
-import shutil
 import unittest
 import uuid
 import tempfile
 import time
-import warnings
 import weakref
 from buttervolume import btrfs, cli
 from buttervolume import plugin
@@ -30,7 +28,6 @@ class TestCase(unittest.TestCase):
         for directory in (VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH):
             btrfs.Subvolume(
                 join(directory, PREFIX_TEST_VOLUME) + '*').delete(check=False)
-
 
     def setUp(self):
         self.app = TestApp(cli.app)
@@ -470,9 +467,7 @@ class TestCase(unittest.TestCase):
         path = join(VOLUMES_PATH, name)
         remote_path = join(TEST_REMOTE_PATH, name)
         # Prepare local btrfs subvolume
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name)
         # We can't use same subvolume name twice on the same host so use a
         # non btrf directory for testing purpose
         with TemporaryDirectory(remote_path) as remote_path:
@@ -511,9 +506,7 @@ class TestCase(unittest.TestCase):
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         remote_path = join(TEST_REMOTE_PATH, name)
-        self.app.post('/VolumeDriver.Create', json.dumps({'Name': name}))
-        with open(join(path, 'foobar'), 'w') as f:
-            f.write('foobar')
+        self.create_a_volume_with_a_file(name)
         # check we have no schedule
         resp = self.app.get('/VolumeDriver.Schedule.List')
         schedule = json.loads(resp.body.decode())['Schedule']
@@ -567,9 +560,9 @@ class TestCase(unittest.TestCase):
         ))
 
 
-class TemporaryDirectory(object):
-    """Create and return a temporary directory. This has the same
-    behavior as tempfile.TemporaryDirectory but is used with a given path
+class TemporaryDirectory(tempfile.TemporaryDirectory):
+    """Create and return a temporary directory. This change the
+    tempfile.TemporaryDirectory behavior by letting user provide his wished
     directory, if directory already exists that directory and everything
     contained in it are removed.  For
     example:
@@ -585,29 +578,11 @@ class TemporaryDirectory(object):
             self, self._cleanup, self.name,
             warn_message="Implicitly cleaning up {!r}".format(self))
 
-    @classmethod
-    def _cleanup(cls, name, warn_message):
-        shutil.rmtree(name)
-        warnings.warn(warn_message, ResourceWarning)
-
     def mkdir(self, path):
         if os.path.isdir(path):
             self.cleanup()
         os.mkdir(path, 0o700)
         return path
-
-    def __repr__(self):
-        return "<{} {!r}>".format(self.__class__.__name__, self.name)
-
-    def __enter__(self):
-        return self.name
-
-    def __exit__(self, exc, value, tb):
-        self.cleanup()
-
-    def cleanup(self):
-        if self._finalizer.detach():
-            shutil.rmtree(self.name)
 
 
 if __name__ == '__main__':

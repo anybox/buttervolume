@@ -343,13 +343,13 @@ def main():
         help='Snapshot to send')
 
     parser_sync = subparsers.add_parser(
-        'sync', help='Sync a volume from another host')
+        'sync', help='Sync a volume from other host(s)')
     parser_sync.add_argument(
         'volumes', metavar='volumes', nargs=1,
         help='Volumes to sync (1 max)')
     parser_sync.add_argument(
         'hosts', metavar='hosts', nargs='*',
-        help='Hosts to sync data to')
+        help='Host list to sync data from (space separator)')
 
     parser_remove = subparsers.add_parser(
         'rm', help='Delete a snapshot')

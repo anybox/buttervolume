@@ -200,13 +200,13 @@ from the distantant volume and replace in the local volume. Before running the
     $ buttervolume sync <volume> <host1> [<host2>][...]
 
 The intent is to synchronize a volume between multi hosts on running
-containers, so you should schedul that action on each nodes from all remote
+containers, so you should schedule that action on each nodes from all remote
 hosts.
 
 .. note::
 
    As we are pulling data from multiple hosts we never remove data, consider
-   ro remove schedul actions before removing data on each hosts.
+   removing scheduled actions before removing data on each hosts.
 
 .. warning::
 
@@ -359,7 +359,7 @@ or using and testing the docker image (with python >= 3.5)::
     $ sudo docker run -it --rm --privileged \
         -v /var/lib/docker:/var/lib/docker \
         -v "$PWD":/usr/src/buttervolume \
-        -w /usr/src/buttervolume: \
+        -w /usr/src/buttervolume \
         anybox/buttervolume test
 
 If you have no BTRFS partitions or volumes you can setup a virtual partition
