@@ -294,7 +294,7 @@ It should create a snapshot every day, then purge snapshots everydays while
 keeping all snapshots in the last 24h, then one snapshot per day during one
 month, then one snapshot per month during only one year.
 
-**Schedule a syncrhonization** of volume ``foovolume`` from ``remote_host1``
+**Schedule a syncrhonization** of volume ``foovolume`` from ``remote_host1``
 abd ``remote_host2``::
 
     $ buttervolume schedule synchronize:remote_host1,remote_host2 60 foovolume
