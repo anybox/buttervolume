@@ -87,8 +87,8 @@ def schedule(args):
         'Action': args.action[0],
         'Timer': args.timer[0]})
     resp = Session().post(
-           'http+unix://{}{}'
-           .format(urllib.parse.quote_plus(SOCKET), urlpath), param)
+        'http+unix://{}{}'.format(
+            urllib.parse.quote_plus(SOCKET), urlpath), param)
     res = get_from(resp, '')
     return res
 
@@ -130,6 +130,23 @@ def restore(args):
 def send(args, test=False):
     urlpath = '/VolumeDriver.Snapshot.Send'
     param = {'Name': args.snapshot[0], 'Host': args.host[0]}
+    if test:
+        param['Test'] = True
+        resp = TestApp(app).post(urlpath, json.dumps(param))
+    else:
+        resp = Session().post(
+            'http+unix://{}{}'
+            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            json.dumps(param))
+    res = get_from(resp, '')
+    if res:
+        print(res)
+    return res
+
+
+def sync(args, test=False):
+    urlpath = '/VolumeDriver.Volume.Sync'
+    param = {'Volumes': args.volumes, 'Hosts': args.hosts}
     if test:
         param['Test'] = True
         resp = TestApp(app).post(urlpath, json.dumps(param))
@@ -238,7 +255,15 @@ def scheduler(config=SCHEDULE, test=False):
                           test=test)
                     log.info("Finished purging")
                     SCHEDULE_LOG[action][name] = now
-
+                if action.startswith('synchronize:'):
+                    log.info("Starting scheduled synchronization of %s", name)
+                    hosts = action.split(':')[1].split(',')
+                    # do a snapshot to save state before pulling data
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    log.debug("Successfully snapshotted to %s", snap)
+                    sync(Arg(volumes=[name], hosts=hosts), test=test)
+                    log.debug("End of %s synchronization from %s", name, hosts)
+                    SCHEDULE_LOG[action][name] = now
             except CalledProcessError as e:
                 log.error('Error processing scheduler action file %s '
                           'name=%s, action=%s, timer=%s, '
@@ -272,6 +297,7 @@ def main():
     subparsers = parser.add_subparsers(help='sub-commands')
     parser_run = subparsers.add_parser(
         'run', help='Run the plugin in foreground')
+
     parser_snapshot = subparsers.add_parser(
         'snapshot', help='Snapshot a volume')
     parser_snapshot.add_argument(
@@ -281,26 +307,32 @@ def main():
     parser_snapshots.add_argument(
         'name', metavar='name', nargs='?',
         help='Name of the volume whose snapshots are to list')
+
     parser_schedule = subparsers.add_parser(
-        'schedule', help='(un)Schedule a snapshot, replication or purge')
+        'schedule', help='(un)Schedule a snapshot, replication, '
+                         'synchronization or purge')
     parser_schedule.add_argument(
         'action', metavar='action', nargs=1,
         help=('Name of the action to schedule '
-              '(snapshot, replicate:<host>, purge:<pattern>)'))
+              '(snapshot, replicate:<host>, purge:<pattern>, '
+              'synchronize:<host[,host2[,host3]]>)'))
     parser_schedule.add_argument(
         'timer', metavar='timer', nargs=1, type=int,
         help='Time span in minutes between two actions')
     parser_schedule.add_argument(
         'name', metavar='name', nargs=1,
         help='Name of the volume whose snapshots are to schedule')
+
     parser_scheduled = subparsers.add_parser(
         'scheduled', help='List scheduled actions')
+
     parser_restore = subparsers.add_parser(
         'restore', help='Restore a snapshot')
     parser_restore.add_argument(
         'name', metavar='name', nargs=1,
         help=('Name of the snapshot to restore '
               '(use the name of the volume to restore the latest snapshot)'))
+
     parser_send = subparsers.add_parser(
         'send', help='Send a snapshot to another host')
     parser_send.add_argument(
@@ -309,6 +341,16 @@ def main():
     parser_send.add_argument(
         'snapshot', metavar='snapshot', nargs=1,
         help='Snapshot to send')
+
+    parser_sync = subparsers.add_parser(
+        'sync', help='Sync a volume from other host(s)')
+    parser_sync.add_argument(
+        'volumes', metavar='volumes', nargs=1,
+        help='Volumes to sync (1 max)')
+    parser_sync.add_argument(
+        'hosts', metavar='hosts', nargs='*',
+        help='Host list to sync data from (space separator)')
+
     parser_remove = subparsers.add_parser(
         'rm', help='Delete a snapshot')
     parser_remove.add_argument(
@@ -321,7 +363,8 @@ def main():
               "Pattern components must have a suffix with the unit:\n"
               "  m = minutes, h = hours, d = days, w = weeks, y = years\n"
               "So 4h:1d:1w means:\n"
-              "  keep 1 snapshot every 4 hours during 1 day,\n"
+              "  Keep all snapshots in the last four hours,\n"
+              "  then keep 1 snapshot every 4 hours during 1 day,\n"
               "  then keep 1 snapshot every day during the 1st week\n"
               "  then delete snapshots older than 1 week.\n"))
     parser_purge.add_argument(
@@ -338,6 +381,7 @@ def main():
     parser_scheduled.set_defaults(func=scheduled)
     parser_restore.set_defaults(func=restore)
     parser_send.set_defaults(func=send)
+    parser_sync.set_defaults(func=sync)
     parser_remove.set_defaults(func=remove)
     parser_purge.set_defaults(func=purge)
 
