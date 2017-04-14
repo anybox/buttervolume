@@ -470,7 +470,7 @@ class TestCase(unittest.TestCase):
         self.create_a_volume_with_a_file(name)
         # We can't use same subvolume name twice on the same host so use a
         # non btrf directory for testing purpose
-        with TemporaryDirectory(remote_path) as remote_path:
+        with TemporaryDirectory(path=remote_path) as remote_path:
             with open(join(remote_path, 'foobar'), 'w') as f:
                 f.write('test sync')
             self.app.post(
@@ -532,7 +532,7 @@ class TestCase(unittest.TestCase):
         )
         SCHEDULE_LOG['synchronize:localhost,wronghost.mlf'][name] = \
             datetime.now() - timedelta(1)
-        with TemporaryDirectory(remote_path) as remote_path:
+        with TemporaryDirectory(path=remote_path) as remote_path:
             with open(join(remote_path, 'foobar'), 'w') as f:
                 f.write('test sync')
             # run the scheduler and check we only have two more snapshots
@@ -572,8 +572,10 @@ class TemporaryDirectory(tempfile.TemporaryDirectory):
     in it are removed.
     """
 
-    def __init__(self, path):
-        self.name = self.mkdir(path)
+    def __init__(self, suffix=None, prefix=None, dir=None, path=None):
+        self.name = self.mkdir(path) if path else tempfile.mkdtemp(
+            suffix, prefix, dir
+        )
         self._finalizer = weakref.finalize(
             self, self._cleanup, self.name,
             warn_message="Implicitly cleaning up {!r}".format(self))
