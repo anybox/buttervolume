@@ -114,6 +114,7 @@ When buttervolume is installed, it provides a command line tool
     scheduled           List scheduled actions
     restore             Restore a snapshot
     send                Send a snapshot to another host
+    sync                Synchronise a volume from a remote host volume
     rm                  Delete a snapshot
     purge               Purge old snapshot using a purge pattern
 
@@ -186,6 +187,31 @@ the remote host.
 currently sent using BTRFS send/receive through ssh. This requires that ssh
 keys be present and already authorized on the target host, and that the
 ``StrictHostKeyChecking no`` option be enabled in ``~/.ssh/config``.
+
+
+Synchronize a volume from another host volume
+---------------------------------------------
+
+You can receive data from a remote volume, so in case there is a volume on
+the remote host with the **same name**, it will get new and most recent data
+from the distantant volume and replace in the local volume. Before running the
+``rsync`` command a snapshot is made on the locale machine to manage recovery::
+
+    $ buttervolume sync <volume> <host1> [<host2>][...]
+
+The intent is to synchronize a volume between multi hosts on running
+containers, so you should schedul that action on each nodes from all remote
+hosts.
+
+.. note::
+
+   As we are pulling data from multiple hosts we never remove data, consider
+   ro remove schedul actions before removing data on each hosts.
+
+.. warning::
+
+   Make sure your application is able to handle such synchronisation
+
 
 Purge old snapshots
 -------------------
@@ -267,6 +293,15 @@ simplest ones to more elaborate ones. A common one is the following::
 It should create a snapshot every day, then purge snapshots everydays while
 keeping all snapshots in the last 24h, then one snapshot per day during one
 month, then one snapshot per month during only one year.
+
+**Schedule a syncrhonization** of volume ``foovolume`` from ``remote_host1``
+abd ``remote_host2``::
+
+    $ buttervolume schedule synchronize:remote_host1,remote_host2 60 foovolume
+
+Remove the same schedule::
+
+    $ buttervolume schedule synchronize:remote_host1,remote_host2 0 foovolume
 
 
 List scheduled jobs

@@ -87,8 +87,8 @@ def schedule(args):
         'Action': args.action[0],
         'Timer': args.timer[0]})
     resp = Session().post(
-           'http+unix://{}{}'
-           .format(urllib.parse.quote_plus(SOCKET), urlpath), param)
+        'http+unix://{}{}'.format(
+            urllib.parse.quote_plus(SOCKET), urlpath), param)
     res = get_from(resp, '')
     return res
 
@@ -343,10 +343,10 @@ def main():
         help='Snapshot to send')
 
     parser_sync = subparsers.add_parser(
-        'sync', help='Sync a volume to another host')
+        'sync', help='Sync a volume from another host')
     parser_sync.add_argument(
         'volumes', metavar='volumes', nargs=1,
-        help='Volumes to sync (1 max at the moment)')
+        help='Volumes to sync (1 max)')
     parser_sync.add_argument(
         'hosts', metavar='hosts', nargs='*',
         help='Hosts to sync data to')
