@@ -363,7 +363,8 @@ def main():
               "Pattern components must have a suffix with the unit:\n"
               "  m = minutes, h = hours, d = days, w = weeks, y = years\n"
               "So 4h:1d:1w means:\n"
-              "  keep 1 snapshot every 4 hours during 1 day,\n"
+              "  Keep all snapshots in the last four hours,\n"
+              "  then keep 1 snapshot every 4 hours during 1 day,\n"
               "  then keep 1 snapshot every day during the 1st week\n"
               "  then delete snapshots older than 1 week.\n"))
     parser_purge.add_argument(
