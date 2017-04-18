@@ -365,7 +365,7 @@ or using and testing the docker image (with python >= 3.5)::
 If you have no BTRFS partitions or volumes you can setup a virtual partition
 in a file as follows (tested on Debian 8):
 
-* Setup brtfs virtual partition::
+* Setup BTRFS virtual partition::
 
     $ sudo qemu-img create /var/lib/docker/btrfs.img 10G
     Formatting '/var/lib/docker/btrfs.img', fmt=raw size=10737418240
@@ -392,7 +392,7 @@ in a file as follows (tested on Debian 8):
         && sudo umount /tmp/btrfs_mount_point/ \
         && rm -r /tmp/btrfs_mount_point/
 
-* Stop docker / create required mount point and restart docker::
+* Stop docker, create required mount point and restart docker::
 
     $ sudo systemctl stop docker \
         && sudo mkdir -p /var/lib/docker/volumes \
@@ -403,7 +403,7 @@ in a file as follows (tested on Debian 8):
         && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received \
         && sudo systemctl start docker
 
-* once you are done with your test when you will umount those volume you will
+* once you are done with your test when you can umount those volume and you will
   find back your previous docker volumes::
 
 

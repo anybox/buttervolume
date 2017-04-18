@@ -1,4 +1,9 @@
 from setuptools import setup, find_packages
+import sys
+
+if sys.version_info < (3, 5):
+    sys.exit("Buttervolume currently works only with Python >= 3.5. "
+             "We will accept any contribution to support older versions")
 
 setup(
     name="buttervolume",
