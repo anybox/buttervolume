@@ -358,9 +358,9 @@ def snapshots_purge():
             for i, age in enumerate(snapshots_age):
                 # if the age is outside the age_segment, delete nothing.
                 # Only 70 and 90 are inside the age_segment (60, 180)
-                if age <= age_segment[0] or age >= age_segment[1] < max_age:
+                if age <= age_segment[0] or age >= age_segment[1] <= max_age:
                     continue
-                # Now get the timeframe of the snapshot.
+                # Now get the timeframe number of the snapshot.
                 # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)
                 timeframe = age // age_segment[0]
                 # delete if we already had a snapshot in the same timeframe
