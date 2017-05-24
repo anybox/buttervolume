@@ -413,3 +413,10 @@ in a file as follows (tested on Debian 8):
         && sudo umount /var/lib/docker/received \
         && sudo systemctl start docker \
         && sudo rm /var/lib/docker/btrfs.img
+
+Credits
+*******
+
+- Christophe Combelles
+- Pierre Verkest
+

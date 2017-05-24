@@ -30,4 +30,12 @@ setup(
     tests_require=[
     ],
     test_suite='test',
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: System Administrators",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: POSIX :: Linux",
+        "Topic :: System :: Clustering",
+        ],
 )
