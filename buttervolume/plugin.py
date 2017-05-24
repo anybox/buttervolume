@@ -365,7 +365,7 @@ def compute_purges(snapshots, pattern, now):
         try:
             snapshots_age.append(
                 int((now - datetime.strptime(
-                    s.split('@')[1], "%Y-%m-%dT%H:%M:%S.%f")).total_seconds()
+                    s.split('@')[1], DTFORMAT)).total_seconds()
                     )//60)
         except:
             log.info("Skipping purge of %s with invalid date format", s)
