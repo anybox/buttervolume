@@ -9,7 +9,7 @@ from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH
-from buttervolume.plugin import jsonloads
+from buttervolume.plugin import jsonloads, compute_purges
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output, run
@@ -440,6 +440,17 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
         cleanup_snapshots()
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
+
+    def test_compute_purge(self):
+        now = datetime.now()
+        snapshots = [
+            'foobar@' + (now - timedelta(hours=h, minutes=30)
+                         ).strftime("%Y-%m-%dT%H:%M:%S.%f")
+            for h in range(50000)]
+        purge_list = compute_purges(  # 1d:1w:4w:1y
+            snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
+        not_purged = sorted(set(snapshots) - set(purge_list))
+        self.assertEqual(len(not_purged), 46)
 
     def test_schedule_purge(self):
         # create a volume with a file
