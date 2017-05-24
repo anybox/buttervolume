@@ -322,19 +322,41 @@ def snapshots_purge():
     params = jsonloads(request.body.read())
     volume_name = params['Name']
     dryrun = params.get('Dryrun', False)
+
+    # convert the pattern to seconds, check validity and reorder
     units = {'m': 1, 'h': 60, 'd': 60*24, 'w': 60*24*7, 'y': 60*24*365}
     try:
         pattern = sorted(int(i[:-1])*units[i[-1]]
                          for i in params['Pattern'].split(':'))
         assert(len(pattern) >= 2)
-        max_age = pattern[-1]
     except:
         log.error("Invalid purge pattern: %s", params['Pattern'])
         return json.dumps({'Err': 'Invalid purge pattern'})
+
     # snapshots related to the volume, more recents first
     snapshots = sorted((s for s in os.listdir(SNAPSHOTS_PATH)
                         if s.startswith(volume_name + '@')), reverse=True)
-    now = datetime.now()
+    try:
+        for snapshot in compute_purges(snapshots, pattern, datetime.now()):
+            if dryrun:
+                log.info('(Dry run) Would delete snapshot {}'
+                         .format(snapshot))
+            else:
+                    btrfs.Subvolume(
+                        join(SNAPSHOTS_PATH, snapshot)).delete()
+                    log.info('Deleted snapshot {}'.format(snapshot))
+    except Exception as e:
+        log.error("Error purging snapshots: %s", e.strerror)
+        return json.dumps({'Err': e.strerror})
+    return json.dumps({'Err': ''})
+
+
+def compute_purges(snapshots, pattern, now):
+    """Return the list of snapshots to purge,
+    given a list of snapshots, a purge pattern and a now time
+    """
+    purge_list = []
+    max_age = pattern[-1]
     # Age of the snapshots in minutes.
     # Example : [30, 70, 90, 150, 210, ..., 4000]
     snapshots_age = []
@@ -348,34 +370,24 @@ def snapshots_purge():
             log.info("Skipping purge of %s with invalid date format", s)
             continue
     if not snapshots:
-        return json.dumps({'Err': ''})
+        return purge_list
     # pattern = 60:180:3600
     # age segments = [(60, 180), (180, 3600)]
-    try:
-        for age_segment in [(pattern[i], pattern[i+1])
-                            for i, p in enumerate(pattern[:-1])]:
-            last_timeframe = -1
-            for i, age in enumerate(snapshots_age):
-                # if the age is outside the age_segment, delete nothing.
-                # Only 70 and 90 are inside the age_segment (60, 180)
-                if age <= age_segment[0] or age >= age_segment[1] < max_age:
-                    continue
-                # Now get the timeframe number of the snapshot.
-                # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)
-                timeframe = age // age_segment[0]
-                # delete if we already had a snapshot in the same timeframe
-                # or if the snapshot is very old
-                if timeframe == last_timeframe or age > max_age:
-                    snapshot = snapshots[i]
-                    if dryrun:
-                        log.info('(Dry run) Would delete snapshot {}'
-                                 .format(snapshot))
-                    else:
-                        btrfs.Subvolume(
-                            join(SNAPSHOTS_PATH, snapshot)).delete()
-                        log.info('Deleted snapshot {}'.format(snapshot))
-                last_timeframe = timeframe
-    except Exception as e:
-        log.error("Error purging snapshots: %s", e.strerror)
-        return json.dumps({'Err': e.strerror})
-    return json.dumps({'Err': ''})
+    for age_segment in [(pattern[i], pattern[i+1])
+                        for i, p in enumerate(pattern[:-1])]:
+        last_timeframe = -1
+        for i, age in enumerate(snapshots_age):
+            # if the age is outside the age_segment, delete nothing.
+            # Only 70 and 90 are inside the age_segment (60, 180)
+            if age <= age_segment[0] or age >= age_segment[1] < max_age:
+                continue
+            # Now get the timeframe number of the snapshot.
+            # Ages 70 and 90 are in the same timeframe (70//60 == 90//60)
+            timeframe = age // age_segment[0]
+            # delete if we already had a snapshot in the same timeframe
+            # or if the snapshot is very old
+            if timeframe == last_timeframe or age > max_age:
+                snapshot = snapshots[i]
+                purge_list.append(snapshot)
+            last_timeframe = timeframe
+    return purge_list
