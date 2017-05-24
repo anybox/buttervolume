@@ -17,6 +17,7 @@ SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
 TEST_REMOTE_PATH = "/var/lib/docker/received/"
 SCHEDULE = "/etc/buttervolume/schedule.csv"
 SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}, 'synchronize': {}}
+DTFORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 
 def jsonloads(stuff):
@@ -206,7 +207,7 @@ def volume_snapshot():
     """
     name = jsonloads(request.body.read())['Name']
     path = join(VOLUMES_PATH, name)
-    timestamped = '{}@{}'.format(name, datetime.now().isoformat())
+    timestamped = '{}@{}'.format(name, datetime.now().strftime(DTFORMAT))
     snapshot_path = join(SNAPSHOTS_PATH, timestamped)
     if not os.path.exists(path):
         return json.dumps({'Err': 'No such volume: {}'.format(name)})
@@ -301,7 +302,7 @@ def snapshot_restore():
     if snapshot.exists():
         if volume.exists():
             # backup and delete
-            timestamp = datetime.now().isoformat()
+            timestamp = datetime.now().strftime(DTFORMAT)
             stamped_name = '{}@{}'.format(volume_name, timestamp)
             stamped_path = join(SNAPSHOTS_PATH, stamped_name)
             volume.snapshot(stamped_path, readonly=True)

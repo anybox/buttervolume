@@ -9,7 +9,7 @@ from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH
-from buttervolume.plugin import jsonloads, compute_purges
+from buttervolume.plugin import jsonloads, compute_purges, DTFORMAT
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output, run
@@ -369,12 +369,12 @@ class TestCase(unittest.TestCase):
 
     def create_20_hourly_snapshots(self, name):
         path = join(VOLUMES_PATH, name)
-        hours = [(datetime.now() - timedelta(hours=h)).isoformat()
+        hours = [(datetime.now() - timedelta(hours=h)).strftime(DTFORMAT)
                  for h in range(20)]
         for h in hours:
             run('btrfs subvolume snapshot {} {}@{}'.format(
                 path, join(SNAPSHOTS_PATH, name), h), shell=True)
-        snapshot = datetime.now().isoformat() + '@127.1.2.3'
+        snapshot = datetime.now().strftime(DTFORMAT) + '@127.1.2.3'
         run('btrfs subvolume snapshot {} {}@{}'.format(
             path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
         snapshot = 'other_snap'
@@ -445,7 +445,7 @@ class TestCase(unittest.TestCase):
         now = datetime.now()
         snapshots = [
             'foobar@' + (now - timedelta(hours=h, minutes=30)
-                         ).strftime("%Y-%m-%dT%H:%M:%S.%f")
+                         ).strftime(DTFORMAT)
             for h in range(50000)]
         purge_list = compute_purges(  # 1d:1w:4w:1y
             snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
