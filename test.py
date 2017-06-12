@@ -452,6 +452,19 @@ class TestCase(unittest.TestCase):
         not_purged = sorted(set(snapshots) - set(purge_list))
         self.assertEqual(len(not_purged), 46)
 
+#    def test_compute_purge2(self):
+#        n = datetime.now()
+#        snapshots = [
+#            'foobar@' + (n - timedelta(hours=h, minutes=30)
+#                         ).strftime(DTFORMAT)
+#            for h in range(20000)]
+#        for now in [n + timedelta(i) - timedelta(minutes=1)
+#                    for i in range(300)]:
+#            purge_list = compute_purges(  # 1d:1w:4w:1y
+#                snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
+#            not_purged = sorted(set(snapshots) - set(purge_list))
+#            print([(datetime.strptime(i.split('@')[1], DTFORMAT)-now).total_seconds() for i in not_purged])
+
     def test_schedule_purge(self):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
