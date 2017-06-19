@@ -390,14 +390,14 @@ in a file as follows (tested on Debian 8):
         && sudo btrfs subvolume create /tmp/btrfs_mount_point/volumes \
         && sudo btrfs subvolume create /tmp/btrfs_mount_point/received \
         && sudo umount /tmp/btrfs_mount_point/ \
-        && rm -r /tmp/btrfs_mount_point/
+        && sudo rm -r /tmp/btrfs_mount_point/
 
 * Stop docker, create required mount point and restart docker::
 
     $ sudo systemctl stop docker \
         && sudo mkdir -p /var/lib/docker/volumes \
         && sudo mkdir -p /var/lib/docker/snapshots \
-        && sudo mkdir -p var/lib/docker/received \
+        && sudo mkdir -p /var/lib/docker/received \
         && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/volumes \
         && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots \
         && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received \
