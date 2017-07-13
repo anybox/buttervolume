@@ -6,7 +6,7 @@ CHANGELOG
 
 - initial release, used in production
 
-1.1 (unreleased)
+1.1 (2017-07-13)
 ****************
 
 - allow to restore a snapshot to a different volume name
