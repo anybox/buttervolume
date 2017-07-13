@@ -284,7 +284,9 @@ def snapshot_restore():
     """
     Snapshot a volume and overwrite it with the specified snapshot.
     """
-    snapshot_name = jsonloads(request.body.read())['Name']
+    params = jsonloads(request.body.read())
+    snapshot_name = params['Name']
+    target_name = params.get('Target')
     if '@' not in snapshot_name:
         # we're passing the name of the volume. Use the latest snapshot.
         volume_name = snapshot_name
@@ -295,20 +297,20 @@ def snapshot_restore():
         snapshot_name = sorted(snapshots)[-1]
     snapshot_path = join(SNAPSHOTS_PATH, snapshot_name)
     snapshot = btrfs.Subvolume(snapshot_path)
-    volume_name = snapshot_name.split('@')[0]
-    volume_path = join(VOLUMES_PATH, volume_name)
-    volume = btrfs.Subvolume(volume_path)
+    target_name = target_name or snapshot_name.split('@')[0]
+    target_path = join(VOLUMES_PATH, target_name)
+    volume = btrfs.Subvolume(target_path)
     res = {'Err': ''}
     if snapshot.exists():
         if volume.exists():
             # backup and delete
             timestamp = datetime.now().strftime(DTFORMAT)
-            stamped_name = '{}@{}'.format(volume_name, timestamp)
+            stamped_name = '{}@{}'.format(target_name, timestamp)
             stamped_path = join(SNAPSHOTS_PATH, stamped_name)
             volume.snapshot(stamped_path, readonly=True)
             res['VolumeBackup'] = stamped_name
             volume.delete()
-        snapshot.snapshot(volume_path)
+        snapshot.snapshot(target_path)
     else:
         res['Err'] = 'No such snapshot'
     return json.dumps(res)

@@ -367,6 +367,21 @@ class TestCase(unittest.TestCase):
         with open(join(path, 'foobar')) as f:
             self.assertEqual(f.read(), 'modified foobar')
 
+        # create a different volume
+        name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        path2 = join(VOLUMES_PATH, name2)
+        self.create_a_volume_with_a_file(name2)
+        # modify the file
+        with open(join(path2, 'foobar'), 'w') as f:
+            f.write('modified2 foobar')
+        # restore the snapshot to this volume
+        resp = self.app.post('/VolumeDriver.Snapshot.Restore',
+                             json.dumps({'Name': snapshot,
+                                         'Target': name2}))
+        # check the volume has the original content
+        with open(join(path2, 'foobar')) as f:
+            self.assertEqual(f.read(), 'foobar')
+
     def create_20_hourly_snapshots(self, name):
         path = join(VOLUMES_PATH, name)
         hours = [(datetime.now() - timedelta(hours=h)).strftime(DTFORMAT)

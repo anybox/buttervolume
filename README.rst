@@ -112,7 +112,7 @@ When buttervolume is installed, it provides a command line tool
     snapshots           List snapshots
     schedule            (un)Schedule a snapshot, replication or purge
     scheduled           List scheduled actions
-    restore             Restore a snapshot
+    restore             Restore a snapshot (optionally to a different volume)
     send                Send a snapshot to another host
     sync                Synchronise a volume from a remote host volume
     rm                  Delete a snapshot
@@ -146,15 +146,22 @@ to live in ``/var/lib/docker/volumes``.
 Restore a snapshot
 ------------------
 
-You can restore a snapshot as the main volume. The current volume will first be
-snapshotted, deleted, then replaced with the snapshot.  So no data is lost if
-you do something wrong. Please take care of stopping the container before
-restoring a snapshot::
+You can restore a snapshot as a volume. The current volume will first
+be snapshotted, deleted, then replaced with the snapshot.  If you provide a
+volume name instead of a snapshot, the **latest snapshot** is restored. So no
+data is lost if you do something wrong. Please take care of stopping the
+container before restoring a snapshot::
 
     $ buttervolume restore <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
 to live in ``/var/lib/docker/snapshots``.
+
+By default, the volume name corresponds to the volume the snapshot was created
+from. But you can optionally restore the snapshot to a different volume name by
+adding the target as the second argument::
+
+    $ buttervolume restore <snapshot> <volume>
 
 Delete a snapshot
 -----------------

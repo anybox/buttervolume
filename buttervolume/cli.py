@@ -120,7 +120,7 @@ def restore(args):
     resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Restore'
         .format(urllib.parse.quote_plus(SOCKET)),
-        json.dumps({'Name': args.name[0]}))
+        json.dumps({'Name': args.name[0], 'Target': args.target[0]}))
     res = get_from(resp, 'VolumeBackup')
     if res:
         print(res)
@@ -332,6 +332,9 @@ def main():
         'name', metavar='name', nargs=1,
         help=('Name of the snapshot to restore '
               '(use the name of the volume to restore the latest snapshot)'))
+    parser_restore.add_argument(
+        'target', metavar='target', nargs=1,
+        help=('Name of the restored volume'))
 
     parser_send = subparsers.add_parser(
         'send', help='Send a snapshot to another host')

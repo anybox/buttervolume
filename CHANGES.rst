@@ -5,3 +5,8 @@ CHANGELOG
 ****************
 
 - initial release, used in production
+
+1.1 (unreleased)
+****************
+
+- allow to restore a snapshot to a different volume name
