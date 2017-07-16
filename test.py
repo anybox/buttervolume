@@ -389,12 +389,11 @@ class TestCase(unittest.TestCase):
         for h in hours:
             run('btrfs subvolume snapshot {} {}@{}'.format(
                 path, join(SNAPSHOTS_PATH, name), h), shell=True)
-        snapshot = datetime.now().strftime(DTFORMAT) + '@127.1.2.3'
+        timestamp = datetime.now().strftime(DTFORMAT) + '@127.1.2.3'
         run('btrfs subvolume snapshot {} {}@{}'.format(
-            path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
-        snapshot = 'other_snap'
+            path, join(SNAPSHOTS_PATH, name), timestamp), shell=True)
         run('btrfs subvolume snapshot {} {}@{}'.format(
-            path, join(SNAPSHOTS_PATH, name), snapshot), shell=True)
+            path, join(SNAPSHOTS_PATH, name), 'invalid'), shell=True)
 
     def test_purge(self):
         """Check we can purge snapshots with a save pattern
@@ -416,15 +415,14 @@ class TestCase(unittest.TestCase):
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        # check we deleted 17 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
-        # run the purge again and check we have one more snapshot deleted,
-        # the oldest at the limit
+        # check we deleted 18 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 18)
+        # run the purge again and check we have no more snapshot deleted
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         resp = self.app.post('/VolumeDriver.Snapshots.Purge',
                              json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps-1)
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps)
 
         cleanup_snapshots()
         self.create_20_hourly_snapshots(name)
@@ -434,8 +432,8 @@ class TestCase(unittest.TestCase):
             '/VolumeDriver.Snapshots.Purge',
             json.dumps({'Name': name, 'Pattern': '2h:4h:8h:16h'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        # check we deleted 11 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 11)
+        # check we deleted 15 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 15)
 
         cleanup_snapshots()
         self.create_20_hourly_snapshots(name)
@@ -451,8 +449,8 @@ class TestCase(unittest.TestCase):
             '/VolumeDriver.Snapshots.Purge',
             json.dumps({'Name': name, 'Pattern': '60m:120m:300m:240m:180m'}))
         self.assertEqual(jsonloads(resp.body), {'Err': ''})
-        # check we deleted 14 snapshots
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 14)
+        # check we deleted 18 snapshots
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 18)
         cleanup_snapshots()
         self.app.post('/VolumeDriver.Remove', json.dumps({'Name': name}))
 
@@ -461,24 +459,24 @@ class TestCase(unittest.TestCase):
         snapshots = [
             'foobar@' + (now - timedelta(hours=h, minutes=30)
                          ).strftime(DTFORMAT)
-            for h in range(50000)]
+            for h in range(5000)]
         purge_list = compute_purges(  # 1d:1w:4w:1y
             snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
-        not_purged = sorted(set(snapshots) - set(purge_list))
-        self.assertEqual(len(not_purged), 46)
+        not_purged = set(snapshots) - set(purge_list)
+        self.assertEqual(len(not_purged), 40)
 
-#    def test_compute_purge2(self):
-#        n = datetime.now()
-#        snapshots = [
-#            'foobar@' + (n - timedelta(hours=h, minutes=30)
-#                         ).strftime(DTFORMAT)
-#            for h in range(20000)]
-#        for now in [n + timedelta(i) - timedelta(minutes=1)
-#                    for i in range(300)]:
-#            purge_list = compute_purges(  # 1d:1w:4w:1y
-#                snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
-#            not_purged = sorted(set(snapshots) - set(purge_list))
-#            print([(datetime.strptime(i.split('@')[1], DTFORMAT)-now).total_seconds() for i in not_purged])
+    def test_compute_purge2(self):
+        now = datetime.now()
+        snapshots = [
+            'foobar@' + (now - timedelta(hours=h)
+                         ).strftime(DTFORMAT)
+            for h in range(3000)]
+        for now in [now + timedelta(hours=h)
+                    for h in range(3000)]:
+            purge_list = compute_purges(  # 1d:1w:4w:1y
+                snapshots, [60*24, 60*24*7, 60*24*7*4, 60*24*365], now)
+            snapshots = sorted(set(snapshots) - set(purge_list))
+        self.assertEqual(len(snapshots), 4)
 
     def test_schedule_purge(self):
         # create a volume with a file
@@ -493,7 +491,7 @@ class TestCase(unittest.TestCase):
                      ][name] = datetime.now() - timedelta(minutes=90)
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
         scheduler(SCHEDULE, test=True)
-        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 17)
+        self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 18)
         # unschedule
         self.app.post('/VolumeDriver.Schedule', json.dumps(
             {'Name': name, 'Action': 'purge:2h:2h', 'Timer': 0}))
