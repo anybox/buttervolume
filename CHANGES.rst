@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+1.3 (2017-07-30)
+****************
+
+- fixed the cli for the restore command
+
 1.2 (2017-07-16)
 ****************
 
