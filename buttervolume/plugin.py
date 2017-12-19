@@ -8,7 +8,7 @@ from datetime import datetime
 from os.path import join, basename, exists, dirname
 from subprocess import check_call, CalledProcessError
 from subprocess import run, PIPE
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger()
 
 # absolute path to the volumes
@@ -315,6 +315,25 @@ def snapshot_restore():
         res['Err'] = 'No such snapshot'
     return json.dumps(res)
 
+@route('/VolumeDriver.Clone', ['POST'])
+def snapshot_clone():
+    """
+    Create a new volume as an snapshot from another.
+    """
+    params = jsonloads(request.body.read())
+    volume_name = params['Name']
+    target_name = params.get('Target')
+    volume_path = join(VOLUMES_PATH, volume_name)
+    target_path = join(VOLUMES_PATH, target_name)
+    volume = btrfs.Subvolume(volume_path)
+    res = {'Err': ''}
+    if volume.exists():
+        # clone
+        volume.snapshot(target_path)
+        res['VolumeCloned'] = target_name
+    else:
+        res['Err'] = 'No such snapshot'
+    return json.dumps(res)
 
 @route('/VolumeDriver.Snapshots.Purge', ['POST'])
 def snapshots_purge():
