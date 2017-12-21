@@ -399,10 +399,13 @@ class TestCase(unittest.TestCase):
                              json.dumps({'Name': name,
                                          'Target': name2}))
 
+        # check the cloned volume has a copy of the original content
+        with open(join(path2, 'foobar')) as f:
+            self.assertEqual(f.read(), 'foobar')
         # modify the file in name2 (new volume)
         with open(join(path2, 'foobar'), 'w') as f:
             f.write('modified2 foobar')
-        # check the volume has the original content
+        # check the orginal volume has unmodified content
         with open(join(path, 'foobar')) as f:
             self.assertEqual(f.read(), 'foobar')
         # check the new volume has the new content
