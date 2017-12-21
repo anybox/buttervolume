@@ -15,7 +15,7 @@ from subprocess import CalledProcessError
 from threading import Timer
 from waitress import serve
 from webtest import TestApp
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger()
 SOCKET = '/run/docker/plugins/btrfs.sock'
 TIMER = 60
@@ -122,6 +122,16 @@ def restore(args):
         .format(urllib.parse.quote_plus(SOCKET)),
         json.dumps({'Name': args.name[0], 'Target': args.target}))
     res = get_from(resp, 'VolumeBackup')
+    if res:
+        print(res)
+    return res
+
+def clone(args):
+    resp = Session().post(
+        'http+unix://{}/VolumeDriver.Clone'
+        .format(urllib.parse.quote_plus(SOCKET)),
+        json.dumps({'Name': args.name[0], 'Target': args.target}))
+    res = get_from(resp, 'VolumeCloned')
     if res:
         print(res)
     return res
@@ -336,6 +346,15 @@ def main():
         'target', metavar='target', nargs='?', default=None,
         help=('Name of the restored volume'))
 
+    parser_clone = subparsers.add_parser(
+        'clone', help='Clone a volume')
+    parser_clone.add_argument(
+        'name', metavar='name', nargs=1,
+        help=('Name of the volume to be cloned'))
+    parser_clone.add_argument(
+        'target', metavar='target', nargs='?', default=None,
+        help=('Name of the new volume to be created'))
+
     parser_send = subparsers.add_parser(
         'send', help='Send a snapshot to another host')
     parser_send.add_argument(
@@ -383,6 +402,7 @@ def main():
     parser_schedule.set_defaults(func=schedule)
     parser_scheduled.set_defaults(func=scheduled)
     parser_restore.set_defaults(func=restore)
+    parser_clone.set_defaults(func=clone)
     parser_send.set_defaults(func=send)
     parser_sync.set_defaults(func=sync)
     parser_remove.set_defaults(func=remove)
