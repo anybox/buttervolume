@@ -113,6 +113,7 @@ When buttervolume is installed, it provides a command line tool
     schedule            (un)Schedule a snapshot, replication or purge
     scheduled           List scheduled actions
     restore             Restore a snapshot (optionally to a different volume)
+    clone               Clone a volume as new volume
     send                Send a snapshot to another host
     sync                Synchronise a volume from a remote host volume
     rm                  Delete a snapshot
@@ -162,6 +163,20 @@ from. But you can optionally restore the snapshot to a different volume name by
 adding the target as the second argument::
 
     $ buttervolume restore <snapshot> <volume>
+
+Clone a volume
+------------------
+
+You can clone a volume as a new volume. The current volume will be cloned
+as a new volume name given as parameter. Please take care of stopping the
+container before clonning a volume::
+
+    $ buttervolume clone <volume> <new_volume>
+
+``<volume>`` is the name of the volume to be cloned, not the full path. It is expected
+to live in ``/var/lib/docker/volumes``.
+``<new_volume>`` is the name of the new volume to be created as clone of previous one,
+not the full path. It is expected to be created in ``/var/lib/docker/volumes``.
 
 Delete a snapshot
 -----------------

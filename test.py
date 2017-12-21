@@ -382,6 +382,33 @@ class TestCase(unittest.TestCase):
         with open(join(path2, 'foobar')) as f:
             self.assertEqual(f.read(), 'foobar')
 
+    def test_clone(self):
+        """ Check we can clone as a new volume
+        """
+        # create a volume with a file
+        name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        path = join(VOLUMES_PATH, name)
+        self.create_a_volume_with_a_file(name)
+
+        # clone a different volume
+        name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
+        path2 = join(VOLUMES_PATH, name2)
+
+        # clone name as new volume name2
+        resp = self.app.post('/VolumeDriver.Clone',
+                             json.dumps({'Name': name,
+                                         'Target': name2}))
+
+        # modify the file in name2 (new volume)
+        with open(join(path2, 'foobar'), 'w') as f:
+            f.write('modified2 foobar')
+        # check the volume has the original content
+        with open(join(path, 'foobar')) as f:
+            self.assertEqual(f.read(), 'foobar')
+        # check the new volume has the new content
+        with open(join(path2, 'foobar')) as f:
+            self.assertEqual(f.read(), 'modified2 foobar')
+
     def create_20_hourly_snapshots(self, name):
         path = join(VOLUMES_PATH, name)
         hours = [(datetime.now() - timedelta(hours=h)).strftime(DTFORMAT)

@@ -318,7 +318,7 @@ def snapshot_restore():
 @route('/VolumeDriver.Clone', ['POST'])
 def snapshot_clone():
     """
-    Create a new volume as an snapshot from another.
+    Create a new volume as clone from another.
     """
     params = jsonloads(request.body.read())
     volume_name = params['Name']
@@ -332,7 +332,7 @@ def snapshot_clone():
         volume.snapshot(target_path)
         res['VolumeCloned'] = target_name
     else:
-        res['Err'] = 'No such snapshot'
+        res['Err'] = 'No such volume'
     return json.dumps(res)
 
 @route('/VolumeDriver.Snapshots.Purge', ['POST'])
