@@ -168,7 +168,8 @@ def snapshot_send():
         latest = latest.rsplit('@', 1)[0]
     parent = '-p "{}"'.format(join(SNAPSHOTS_PATH, latest)) if latest else ''
     port = os.getenv("SSH_PORT", '1122')
-    run('sync', shell=True)  # needed by a current issue with send
+    # needed by a current issue with send
+    run('btrfs filesystem sync ""'.format(SNAPSHOTS_PATH), shell=True)
     cmd = ('btrfs send {parent} "{snapshot_path}"'
            ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"')
     try:
