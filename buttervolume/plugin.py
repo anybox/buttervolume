@@ -8,7 +8,7 @@ from datetime import datetime
 from os.path import join, basename, exists, dirname
 from subprocess import check_call, CalledProcessError
 from subprocess import run, PIPE
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
 # absolute path to the volumes

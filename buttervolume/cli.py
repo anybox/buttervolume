@@ -15,7 +15,7 @@ from subprocess import CalledProcessError
 from threading import Timer
 from waitress import serve
 from webtest import TestApp
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 SOCKET = '/run/docker/plugins/btrfs.sock'
 TIMER = 60
