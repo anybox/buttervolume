@@ -13,7 +13,7 @@ before_script:
   - sudo mkdir /tmp/btrfs_mount_point
   - sudo mount -o loop /var/lib/docker/btrfs.img /tmp/btrfs_mount_point/
   - sudo btrfs subvolume create /tmp/btrfs_mount_point/snapshots
-  - sudo btrfs subvolume create /tmp/btrfs_mount_point/buttervolumes
+  - sudo btrfs subvolume create /tmp/btrfs_mount_point/volumes
   - sudo btrfs subvolume create /tmp/btrfs_mount_point/received
   - sudo umount /tmp/btrfs_mount_point/
   - sudo rm -rf /tmp/btrfs_mount_point/
