@@ -1,15 +1,16 @@
 CHANGELOG
 =========
+
 1.5 (unreleased)
 ****************
-- 
+
+- BREAKING : BTRFS volumes are now stored in a different directory
 
 1.4 (2018-02-01)
 ****************
 
 - Add clone command
 - replace sync by `btrfs filesystem sync`
-
 
 1.3.1 (2017-10-22)
 ******************

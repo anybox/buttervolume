@@ -5,14 +5,14 @@ import os
 from bottle import request, route
 from buttervolume import btrfs
 from datetime import datetime
-from os.path import join, basename, exists, dirname
-from subprocess import check_call, CalledProcessError
+from os.path import join, basename, dirname
+from subprocess import CalledProcessError
 from subprocess import run, PIPE
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
 # absolute path to the volumes
-VOLUMES_PATH = "/var/lib/docker/volumes/"
+VOLUMES_PATH = "/var/lib/docker/buttervolumes/"
 SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
 TEST_REMOTE_PATH = "/var/lib/docker/received/"
 SCHEDULE = "/etc/buttervolume/schedule.csv"

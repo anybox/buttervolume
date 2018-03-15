@@ -10,6 +10,7 @@ import urllib
 from bottle import app
 from buttervolume.plugin import jsonloads, SCHEDULE
 from buttervolume.plugin import SCHEDULE_LOG, SNAPSHOTS_PATH
+from buttervolume.plugin import VOLUMES_PATH
 from datetime import datetime, timedelta
 from subprocess import CalledProcessError
 from threading import Timer
@@ -125,6 +126,7 @@ def restore(args):
     if res:
         print(res)
     return res
+
 
 def clone(args):
     resp = Session().post(
@@ -290,6 +292,9 @@ def scheduler(config=SCHEDULE, test=False):
 
 
 def run(args):
+    if not os.path.exists(VOLUMES_PATH):
+        log.info('Creating %s', VOLUMES_PATH)
+        os.makedirs(VOLUMES_PATH, exist_ok=True)
     if not os.path.exists(SNAPSHOTS_PATH):
         log.info('Creating %s', SNAPSHOTS_PATH)
         os.makedirs(SNAPSHOTS_PATH, exist_ok=True)

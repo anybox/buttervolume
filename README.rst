@@ -47,7 +47,7 @@ You can build a docker image with the provided Dockerfile::
 Install and run
 ***************
 
-Make sure the directory ``/var/lib/docker/volumes`` is living in a BTRFS
+Make sure the directory ``/var/lib/docker/buttervolumes`` is living in a BTRFS
 filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
 You should also create the directory for the unix socket of the plugin::
 
@@ -63,7 +63,7 @@ Either from the image you just built::
 
 Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/buttervolume/>`_ from the Docker hub::
 
-    $ docker run --privileged -v /var/lib/docker/volumes:/var/lib/docker/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
+    $ docker run --privileged -v /var/lib/docker/buttervolumes:/var/lib/docker/buttervolumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
 
 You can also locally install and run the plugin with::
 
@@ -126,7 +126,7 @@ You can create a readonly snapshot of the volume with::
 
     $ buttervolume snapshot <volume>
 
-The volumes are currently expected to live in ``/var/lib/docker/volumes`` and
+The volumes are currently expected to live in ``/var/lib/docker/buttervolumes`` and
 the snapshot will be created in ``/var/lib/docker/snapshots``, by appending the
 datetime to the name of the volume, separated with ``@``.
 
@@ -142,7 +142,7 @@ or just the snapshots corresponding to a volume with::
     $ buttervolume snapshots <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
-to live in ``/var/lib/docker/volumes``.
+to live in ``/var/lib/docker/buttervolumes``.
 
 Restore a snapshot
 ------------------
@@ -174,9 +174,9 @@ container before clonning a volume::
     $ buttervolume clone <volume> <new_volume>
 
 ``<volume>`` is the name of the volume to be cloned, not the full path. It is expected
-to live in ``/var/lib/docker/volumes``.
+to live in ``/var/lib/docker/buttervolumes``.
 ``<new_volume>`` is the name of the new volume to be created as clone of previous one,
-not the full path. It is expected to be created in ``/var/lib/docker/volumes``.
+not the full path. It is expected to be created in ``/var/lib/docker/buttervolumes``.
 
 Delete a snapshot
 -----------------
@@ -249,7 +249,7 @@ without deleting them::
     $ buttervolume purge --dryrun <pattern> <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
-to live in ``/var/lib/docker/volumes``.
+to live in ``/var/lib/docker/buttervolumes``.
 
 ``<pattern>`` is the snapshot retention pattern. It is a semicolon-separated
 list of time length specifiers with a unit. Units can be ``m`` for minutes,
@@ -399,10 +399,10 @@ in a file as follows (tested on Debian 8):
 * Stop docker, create required mount point and restart docker::
 
     $ sudo systemctl stop docker \
-        && sudo mkdir -p /var/lib/docker/volumes \
+        && sudo mkdir -p /var/lib/docker/buttervolumes \
         && sudo mkdir -p /var/lib/docker/snapshots \
         && sudo mkdir -p /var/lib/docker/received \
-        && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/volumes \
+        && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/buttervolumes \
         && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots \
         && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received \
         && sudo systemctl start docker
@@ -412,7 +412,7 @@ in a file as follows (tested on Debian 8):
 
 
     $ sudo systemctl stop docker \
-        && sudo umount /var/lib/docker/volumes \
+        && sudo umount /var/lib/docker/buttervolumes \
         && sudo umount /var/lib/docker/snapshots \
         && sudo umount /var/lib/docker/received \
         && sudo systemctl start docker \
