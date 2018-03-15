@@ -336,15 +336,10 @@ You can list all the scheduled job with::
 It will display the schedule in the same format used for adding the schedule,
 which is convenient to remove an existing schedule or add a similar one.
 
-Disabling copy-on-write
------------------------
+Copy-on-write
+-------------
 
-UPDATE: Copy On Write is disabled by default.
-
-TODO: replace the .nocow file feature with an option to pass
-
-With `buttervolume` you can disable copy-on-write in a volume by creating a ``.nocow`` file at the
-root of the volume. The `buttervolume` plugin will detect it at mount-time and apply ``chattr +C`` on the volume root.
+Copy-On-Write is disabled by default.
 
 Why disabling copy-on-write? If your docker volume stores databases such as
 PostgreSQL or MariaDB, the copy-on-write feature may hurt performance a lot.
@@ -352,19 +347,6 @@ The good news is that disabling copy-on-write does not prevent from doing
 snaphots, so we get the best of both world: good performances with the ability
 to do snapshots.
 
-Creating such a ``.nocow`` file can easily be done in a Dockerfile, before the
-``VOLUME`` command:
-
-.. code:: Dockerfile
-
-    RUN mkdir -p /var/lib/postgresql/data \
-        && chown -R postgres: /var/lib/postgresql/data \
-        && touch /var/lib/postgresql/data/.nocow
-    VOLUME /var/lib/postgresql/data
-
-Alternatively you can create the ``.nocow`` file just after the ``docker
-create`` command, by inspecting the location of the created volumes with
-``docker inspect container | grep volumes``.
 
 Test
 ****

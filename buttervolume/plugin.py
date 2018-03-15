@@ -33,7 +33,7 @@ def plugin_activate():
 def volume_create():
     name = jsonloads(request.body.read())['Name']
     if '@' in name:
-        return json.dumps({'Err': '"@" is illegal in the name of the volume'})
+        return json.dumps({'Err': '"@" is illegal in a volume name'})
     volpath = join(VOLUMES_PATH, name)
     # volume already exists?
     if name in [v['Name']for v in json.loads(volume_list())['Volumes']]:
@@ -47,19 +47,6 @@ def volume_create():
 
 @route('/VolumeDriver.Mount', ['POST'])
 def volume_mount():
-    name = jsonloads(request.body.read())['Name']
-    path = join(VOLUMES_PATH, name)
-    if exists(join(path, '_data', '.nocow')) or exists(join(path, '.nocow')):
-        try:
-            check_call("chattr +C '{}'".format(join(path)), shell=True)
-            log.info("disabled COW on %s", path)
-        except Exception:
-            return json.dumps(
-                {'Err': 'could not disable COW on {}'.format(path)})
-    if exists(join(path, '_data', '.nocow')):
-        os.remove(join(path, '_data', '.nocow'))
-    if exists(join(path, '.nocow')):
-        os.remove(join(path, '.nocow'))
     return volume_path()
 
 
@@ -316,6 +303,7 @@ def snapshot_restore():
         res['Err'] = 'No such snapshot'
     return json.dumps(res)
 
+
 @route('/VolumeDriver.Clone', ['POST'])
 def snapshot_clone():
     """
@@ -335,6 +323,7 @@ def snapshot_clone():
     else:
         res['Err'] = 'No such volume'
     return json.dumps(res)
+
 
 @route('/VolumeDriver.Snapshots.Purge', ['POST'])
 def snapshots_purge():

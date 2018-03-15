@@ -133,17 +133,13 @@ class TestCase(unittest.TestCase):
                                        '{}').body)
         self.assertEqual(resp['Volumes'], [])
 
-    def test_disable_cow(self):
-        """Putting a .nocow file in the volume creation should disable cow
+    def test_disabled_cow(self):
+        """Check that cow is disabled by default
         """
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         path = join(VOLUMES_PATH, name)
         self.create_a_volume_with_a_file(name)
-
-        # put the nocow command
-        os.system('touch {}'.format(join(path, '_data', '.nocow')))
-        os.system('touch {}'.format(join(path, '.nocow')))
 
         # mount
         self.app.post('/VolumeDriver.Mount', json.dumps({'Name': name}))
