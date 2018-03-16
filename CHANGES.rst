@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-1.5 (unreleased)
+2.0 (unreleased)
 ****************
 
 - BREAKING : BTRFS volumes are now stored in a different directory
