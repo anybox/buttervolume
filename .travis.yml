@@ -18,12 +18,12 @@ before_script:
   - sudo umount /tmp/btrfs_mount_point/
   - sudo rm -rf /tmp/btrfs_mount_point/
   - sudo service docker stop
-  - sudo mkdir -p /var/lib/docker/buttervolumes
-  - sudo mkdir -p /var/lib/docker/snapshots
-  - sudo mkdir -p /var/lib/docker/received
-  - sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/buttervolumes
-  - sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots
-  - sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received
+  - sudo mkdir -p /var/lib/buttervolume/volumes
+  - sudo mkdir -p /var/lib/buttervolume/snapshots
+  - sudo mkdir -p /var/lib/buttervolume/received
+  - sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes
+  - sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots
+  - sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received
   - sudo service docker start
   - docker build -t anybox/buttervolume docker/
 
