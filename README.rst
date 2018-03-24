@@ -490,38 +490,12 @@ You have two options :
 
     * **Option 2** (recommended): you stop everything and you move the two folders ``/var/lib/docker/volumes`` and ``/var/lib/docker/snapshots`` into ``/var/lib/buttervolume``.
 
-        * If these two folders live in the same BTRFS subvolume, here are the actions to be done:
-
-            * Stop all containers using btrfs volumes and stop buttervolume
-            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume container
-            * Move ``/var/lib/docker/snapshots`` to ``/var/lib/buttervolume/snapshots``
-            * Move ``btrfs`` docker volumes from ``/var/lib/docker/volumes`` to ``/var/lib/buttervolume/volumes``
-              You have to take care of the possible superposition of ``btrfs`` volumes and ``local`` volumes with the same name in ``/var/lib/docker/volumes``. This probably should be enough ::
-    
-                # for vol in $(docker volume ls|grep ^btrfs|awk '{print $2}'); do
-                #     mv /var/lib/docker/volumes/$vol /var/lib/buttervolume/volumes/
-                # done
-
-            * Delete, rebuild and restart the buttervolume container
+            * Stop docker (systemctl stop docker)
+            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume config volume
+            * Depending on your setup, move ``/var/lib/docker/snapshots`` and ``/var/lib/docker/volumes`` into ``/var/lib/buttervolume/``
+            * Restart docker, delete, rebuild and restart the buttervolume container
             * Restart all other services
 
-        * If these two folders live in their own subvolumes:
-
-            * Stop all containers using btrfs volumes and stop buttervolume
-            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume container
-            * Move (or remount) ``/var/lib/docker/snapshots`` to ``/var/lib/buttervolume/snapshots``
-            * Move (or remount) ``/var/lib/docker/volumes`` to ``/var/lib/buttervolume/volumes``
-            * Move ``local`` docker volumes from ``/var/lib/buttervolume/volumes`` back to ``/var/lib/docker/volumes``
-              You have to take care of the possible superposition of ``btrfs`` volumes and ``local`` volumes with the same name in ``/var/lib/buttervolume/volumes``. This probably should be enough ::
-    
-                # for vol in $(docker volume ls|grep ^local|awk '{print $2}'); do
-                #     mv /var/lib/buttervolume/volumes/$vol /var/lib/docker/volumes/
-                # done
-
-            * Delete, rebuild and restart the buttervolume container
-            * Check that volumes are correctly listed with ``docker volume ls``
-            * Restart all other services
-            
 
 Credits
 *******
