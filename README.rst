@@ -354,9 +354,9 @@ Test
 If your volumes directory is a BTRFS partition or volume, tests can be run
 with::
 
-    $ export SSH_PORT=22  # port of your running ssh server with authorized key
-    $ sudo -E python3 setup.py test
+    $ sudo SSH_PORT=22 python3 setup.py test
 
+22 being the port of your running ssh server with authorized key,
 or using and testing the docker image (with python >= 3.5)::
 
     $ docker build -t anybox/buttervolume docker/
