@@ -135,6 +135,14 @@ def volume_sync():
     return json.dumps({'Err': '\n'.join(errors)})
 
 
+@route('/VolumeDriver.Capabilities', ['POST'])
+def driver_cap():
+    """butter volumes are local to the active node.
+    They only exist as snapshots on the remote nodes.
+    """
+    return json.dumps({"Capabilities": {"Scope": "local"}})
+
+
 @route('/VolumeDriver.Snapshot.Send', ['POST'])
 def snapshot_send():
     """The last sent snapshot is remembered by adding a suffix with the target

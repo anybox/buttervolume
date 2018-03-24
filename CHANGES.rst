@@ -5,6 +5,7 @@ CHANGELOG
 ****************
 
 - BREAKING : BTRFS volumes are now stored in a different directory
+- implemented ``VolumeDriver.Capabilities`` and just return ``'local'``
 
 1.4 (2018-02-01)
 ****************

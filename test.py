@@ -371,9 +371,9 @@ class TestCase(unittest.TestCase):
         with open(join(path2, 'foobar'), 'w') as f:
             f.write('modified2 foobar')
         # restore the snapshot to this volume
-        resp = self.app.post('/VolumeDriver.Snapshot.Restore',
-                             json.dumps({'Name': snapshot,
-                                         'Target': name2}))
+        self.app.post('/VolumeDriver.Snapshot.Restore',
+                      json.dumps({'Name': snapshot,
+                                  'Target': name2}))
         # check the volume has the original content
         with open(join(path2, 'foobar')) as f:
             self.assertEqual(f.read(), 'foobar')
@@ -391,9 +391,9 @@ class TestCase(unittest.TestCase):
         path2 = join(VOLUMES_PATH, name2)
 
         # clone name as new volume name2
-        resp = self.app.post('/VolumeDriver.Clone',
-                             json.dumps({'Name': name,
-                                         'Target': name2}))
+        self.app.post('/VolumeDriver.Clone',
+                      json.dumps({'Name': name,
+                                  'Target': name2}))
 
         # check the cloned volume has a copy of the original content
         with open(join(path2, 'foobar')) as f:
@@ -426,8 +426,8 @@ class TestCase(unittest.TestCase):
         """
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         # first run the purge without snapshots (should do nothing)
-        resp = self.app.post('/VolumeDriver.Snapshots.Purge',
-                             json.dumps({'Name': name, 'Pattern': '2h:2h'}))
+        self.app.post('/VolumeDriver.Snapshots.Purge',
+                      json.dumps({'Name': name, 'Pattern': '2h:2h'}))
         # create a volume with a file
         self.create_a_volume_with_a_file(name)
 
@@ -621,6 +621,10 @@ class TestCase(unittest.TestCase):
                 'Timer': 0,
             }
         ))
+
+    def test_capabilities(self):
+        rsp = jsonloads(self.app.post('/VolumeDriver.Capabilities', '{}').body)
+        self.assertEqual(rsp.get('Capabilities', {}).get('Scope'), 'local')
 
 
 class TemporaryDirectory(tempfile.TemporaryDirectory):
