@@ -1,3 +1,4 @@
+import configparser
 import csv
 import json
 import logging
@@ -8,16 +9,37 @@ from datetime import datetime
 from os.path import join, basename, dirname
 from subprocess import CalledProcessError
 from subprocess import run, PIPE
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger()
 
-# absolute path to the volumes
-VOLUMES_PATH = "/var/lib/docker/buttervolumes/"
-SNAPSHOTS_PATH = "/var/lib/docker/snapshots/"
-TEST_REMOTE_PATH = "/var/lib/docker/received/"
-SCHEDULE = "/etc/buttervolume/schedule.csv"
+
+config = configparser.ConfigParser()
+config.read('/etc/buttervolume/config.ini')
+
+
+def getconfig(config, var, default):
+    """read the var from the environ, then config file, then default
+    """
+    return (os.environ.get('BUTTERVOLUME_' + var)
+            or config['DEFAULT'].get(var, default))
+
+
+# overrideable defaults with config file
+VOLUMES_PATH = getconfig(config, 'VOLUMES_PATH',
+                         '/var/lib/buttervolume/volumes/')
+SNAPSHOTS_PATH = getconfig(config, 'SNAPSHOTS_PATH',
+                           '/var/lib/buttervolume/snapshots/')
+TEST_REMOTE_PATH = getconfig(config, 'TEST_REMOTE_PATH',
+                             '/var/lib/buttervolume/received/')
+SCHEDULE = getconfig(config, 'SCHEDULE',
+                     '/etc/buttervolume/schedule.csv')
+SOCKET = getconfig(config, 'SOCKET',
+                   '/run/docker/plugins/btrfs.sock')
+TIMER = int(getconfig(config, 'TIMER', 60))
+DTFORMAT = getconfig(config, 'DTFORMAT', '%Y-%m-%dT%H:%M:%S.%f')
+LOGLEVEL = getattr(logging, getconfig(config, 'LOGLEVEL', 'INFO'))
 SCHEDULE_LOG = {'snapshot': {}, 'replicate': {}, 'synchronize': {}}
-DTFORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+
+logging.basicConfig(level=LOGLEVEL)
+log = logging.getLogger()
 
 
 def jsonloads(stuff):

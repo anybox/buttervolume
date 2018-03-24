@@ -9,17 +9,17 @@ import sys
 import urllib
 from bottle import app
 from buttervolume.plugin import jsonloads, SCHEDULE
-from buttervolume.plugin import SCHEDULE_LOG, SNAPSHOTS_PATH
-from buttervolume.plugin import VOLUMES_PATH
+from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
+from buttervolume.plugin import LOGLEVEL, SOCKET, TIMER, SCHEDULE_LOG
 from datetime import datetime, timedelta
 from subprocess import CalledProcessError
 from threading import Timer
 from waitress import serve
 from webtest import TestApp
-logging.basicConfig(level=logging.INFO)
+
+
+logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
-SOCKET = '/run/docker/plugins/btrfs.sock'
-TIMER = 60
 app = app()
 
 

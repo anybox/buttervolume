@@ -14,6 +14,7 @@ volumes. It means you can use any storage driver, such as AUFS, this is independ
 
 .. contents::
 
+
 Introduction
 ************
 
@@ -36,6 +37,7 @@ We believe BTRFS subvolumes are a powerful and lightweight storage solution for
 Docker volumes, allowing fast and easy replication (and backup) across several
 nodes of a small cluster.
 
+
 Build
 *****
 
@@ -43,6 +45,7 @@ You can build a docker image with the provided Dockerfile::
 
     $ cd docker
     $ docker build -t buttervolume .
+
 
 Install and run
 ***************
@@ -71,6 +74,43 @@ You can also locally install and run the plugin with::
     $ ./venv/bin/python setup.py develop
     $ sudo ./venv/bin/buttervolume run
 
+
+Configure
+*********
+
+You can configure the following variables:
+
+    * ``VOLUMES_PATH``: the path were the BTRFS volumes are located
+    * ``SNAPSHOTS_PATH``: the path were the BTRFS snapshots are located
+    * ``TEST_REMOTE_PATH``: the path during unit tests were the remote BTRFS snapshots are located
+    * ``SCHEDULE``: the path of the scheduler configuration
+    * ``SOCKET``: the path of the unix socket were buttervolume listen
+    * ``TIMER``: the number of seconds between two runs of the scheduler
+    * ``DTFORMAT``: the format of the datetime in the logs
+    * ``LOGLEVEL``: the Python log level (INFO, DEBUG, etc.)
+
+The configuration can be done in this order of priority:
+
+    #. from an environment variable prefixed with ``BUTTERVOLUME_`` (ex: ``BUTTERVOLUME_TIMER=120``)
+    #. from the ``/etc/buttervolume/config.ini`` file in the [DEFAULT] section
+
+Example of ``config.ini`` file::
+
+    [DEFAULT]
+    TIMER = 120
+
+If none of this is configured, the following default values are taken:
+
+    * ``VOLUMES_PATH = /var/lib/buttervolume/volumes/``
+    * ``SNAPSHOTS_PATH = /var/lib/buttervolume/snapshots/``
+    * ``TEST_REMOTE_PATH = /var/lib/buttervolume/received/``
+    * ``SCHEDULE = /etc/buttervolume/schedule.csv``
+    * ``SOCKET = /run/docker/plugins/btrfs.sock``
+    * ``TIMER = 60``
+    * ``DTFORMAT = %Y-%m-%dT%H:%M:%S.%f``
+    * ``LOGLEVEL = INFO``
+
+
 Usage
 *****
 
@@ -88,6 +128,7 @@ Docker. The name of the socket file is actually the name of the plugin you can
 use with ``docker volume create -d <driver>`` or ``docker create --volume-driver=<driver>``.  when started, the plugin will also start
 its own scheduler to run periodic jobs (such as a snapshot, replication, purge or synchronization)
 
+
 Creating and deleting volumes
 -----------------------------
 
@@ -100,6 +141,7 @@ create -d btrfs``. It also works with docker-compose, by specifying the
 When you delete the volume with ``docker rm -v <container>`` or ``docker volume
 rm <volume>``, the BTRFS subvolume is deleted. If you snapshotted the volume
 elsewhere in the meantime, the snapshots won't be deleted.
+
 
 Managing volumes and snapshots
 ------------------------------
@@ -119,6 +161,7 @@ When buttervolume is installed, it provides a command line tool
     rm                  Delete a snapshot
     purge               Purge old snapshot using a purge pattern
 
+
 Create a snapshot
 -----------------
 
@@ -129,6 +172,7 @@ You can create a readonly snapshot of the volume with::
 The volumes are currently expected to live in ``/var/lib/docker/buttervolumes`` and
 the snapshot will be created in ``/var/lib/docker/snapshots``, by appending the
 datetime to the name of the volume, separated with ``@``.
+
 
 List the snapshots
 ------------------
@@ -143,6 +187,7 @@ or just the snapshots corresponding to a volume with::
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
 to live in ``/var/lib/docker/buttervolumes``.
+
 
 Restore a snapshot
 ------------------
@@ -164,6 +209,7 @@ adding the target as the second argument::
 
     $ buttervolume restore <snapshot> <volume>
 
+
 Clone a volume
 ------------------
 
@@ -178,6 +224,7 @@ to live in ``/var/lib/docker/buttervolumes``.
 ``<new_volume>`` is the name of the new volume to be created as clone of previous one,
 not the full path. It is expected to be created in ``/var/lib/docker/buttervolumes``.
 
+
 Delete a snapshot
 -----------------
 
@@ -187,6 +234,7 @@ You can delete a snapshot with::
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
 to live in ``/var/lib/docker/snapshots``.
+
 
 Replicate a snapshot to another host
 ------------------------------------
@@ -271,6 +319,7 @@ Here are a few examples of retention patterns:
 - ``2h:2h``
     keep all snapshots during the last two hours, then delete older snapshots.
 
+
 Schedule a job
 --------------
 
@@ -335,6 +384,7 @@ You can list all the scheduled job with::
 
 It will display the schedule in the same format used for adding the schedule,
 which is convenient to remove an existing schedule or add a similar one.
+
 
 Copy-on-write
 -------------
