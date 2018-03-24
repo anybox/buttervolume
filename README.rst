@@ -469,8 +469,8 @@ in a file as follows (tested on Debian 8):
         && sudo rm /var/lib/docker/btrfs.img
 
 
-Migrate from version 1 to version 2
-***********************************
+Migrate from version 1.x to version 2.x
+***************************************
 
 If you used version 1, the ``volumes`` and ``snapshots`` folders were located in
 ``/var/lib/docker/``. They have been moved to ``/var/lib/buttervolume`` by default in
@@ -492,7 +492,10 @@ You have two options :
 
             * Stop docker (systemctl stop docker)
             * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume config volume
-            * Depending on your setup, move ``/var/lib/docker/snapshots`` and ``/var/lib/docker/volumes`` into ``/var/lib/buttervolume/``
+            * Depending on your setup, move ``/var/lib/docker/snapshots`` and
+              ``/var/lib/docker/volumes`` into ``/var/lib/buttervolume/``. WARNING: take care
+              of separating ``btrfs`` volumes, which should be in ``/var/lib/buttervolume/``
+              and ``local`` volumes which should be in ``/var/lib/docker/volumes``
             * Restart docker, delete, rebuild and restart the buttervolume container
             * Restart all other services
 
