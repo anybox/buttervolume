@@ -62,8 +62,12 @@ def volume_create():
         return json.dumps({'Err': ''})
     try:
         btrfs.Subvolume(volpath).create()
-    except Exception as e:
+    except CalledProcessError as e:
+        return json.dumps({'Err': e.stderr})
+    except OSError as e:
         return json.dumps({'Err': e.strerror})
+    except Exception as e:
+        return json.dumps({'Err': str(e)})
     return json.dumps({'Err': ''})
 
 

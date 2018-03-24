@@ -8,6 +8,7 @@ CHANGELOG
     BTRFS volumes and snapshots are now stored by default in different directories under ``/var/lib/buttervolume``
 - Configuration possible through environment variables or a ``config.ini`` file
 - implemented ``VolumeDriver.Capabilities`` and just return ``'local'``
+- other minor fixes and improvements
 
 1.4 (2018-02-01)
 ****************
