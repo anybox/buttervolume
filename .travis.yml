@@ -10,22 +10,12 @@ install:
 before_script:
   - sudo qemu-img create /var/lib/docker/btrfs.img 10G
   - sudo mkfs.btrfs /var/lib/docker/btrfs.img
-  - sudo mkdir /tmp/btrfs_mount_point
-  - sudo mount -o loop /var/lib/docker/btrfs.img /tmp/btrfs_mount_point/
-  - sudo btrfs subvolume create /tmp/btrfs_mount_point/snapshots
-  - sudo btrfs subvolume create /tmp/btrfs_mount_point/volumes
-  - sudo btrfs subvolume create /tmp/btrfs_mount_point/received
-  - sudo umount /tmp/btrfs_mount_point/
-  - sudo rm -rf /tmp/btrfs_mount_point/
   - sudo service docker stop
-  - sudo mkdir -p /var/lib/buttervolume/volumes
-  - sudo mkdir -p /var/lib/buttervolume/snapshots
-  - sudo mkdir -p /var/lib/buttervolume/received
-  - sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes
-  - sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots
-  - sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received
+  - sudo mkdir -p /var/lib/buttervolume
+  - sudo mount -o loop /var/lib/docker/btrfs.img /var/lib/buttervolume
+  - sudo mkdir -p /var/lib/buttervolume/{volumes,snapshots,received}
   - sudo service docker start
   - docker build -t anybox/buttervolume docker/
 
 script:
-  - docker run -it --rm --privileged -v /var/lib/docker:/var/lib/docker -v "$PWD":/usr/src/buttervolume -w /usr/src/buttervolume -e SSH_PORT=113 anybox/buttervolume test
+  - docker run -it --rm --privileged -v /var/lib/buttervolume:/var/lib/buttervolume -v "$PWD":/usr/src/buttervolume -w /usr/src/buttervolume -e SSH_PORT=113 anybox/buttervolume test
