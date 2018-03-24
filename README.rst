@@ -50,7 +50,7 @@ You can build a docker image with the provided Dockerfile::
 Install and run
 ***************
 
-Make sure the directory ``/var/lib/docker/buttervolumes`` is living in a BTRFS
+Make sure the directory ``/var/lib/buttervolume/`` is living in a BTRFS
 filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
 You should also create the directory for the unix socket of the plugin::
 
@@ -66,7 +66,7 @@ Either from the image you just built::
 
 Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/buttervolume/>`_ from the Docker hub::
 
-    $ docker run --privileged -v /var/lib/docker/buttervolumes:/var/lib/docker/buttervolumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
+    $ docker run --privileged -v /var/lib/buttervolume/volumes:/var/lib/buttervolume/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
 
 You can also locally install and run the plugin with::
 
@@ -169,7 +169,7 @@ You can create a readonly snapshot of the volume with::
 
     $ buttervolume snapshot <volume>
 
-The volumes are currently expected to live in ``/var/lib/docker/buttervolumes`` and
+The volumes are currently expected to live in ``/var/lib/buttervolume/volumes`` and
 the snapshot will be created in ``/var/lib/docker/snapshots``, by appending the
 datetime to the name of the volume, separated with ``@``.
 
@@ -186,7 +186,7 @@ or just the snapshots corresponding to a volume with::
     $ buttervolume snapshots <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
-to live in ``/var/lib/docker/buttervolumes``.
+to live in ``/var/lib/buttervolume/volumes``.
 
 
 Restore a snapshot
@@ -220,9 +220,9 @@ container before clonning a volume::
     $ buttervolume clone <volume> <new_volume>
 
 ``<volume>`` is the name of the volume to be cloned, not the full path. It is expected
-to live in ``/var/lib/docker/buttervolumes``.
+to live in ``/var/lib/buttervolume/volumes``.
 ``<new_volume>`` is the name of the new volume to be created as clone of previous one,
-not the full path. It is expected to be created in ``/var/lib/docker/buttervolumes``.
+not the full path. It is expected to be created in ``/var/lib/buttervolume/volumes``.
 
 
 Delete a snapshot
@@ -297,7 +297,7 @@ without deleting them::
     $ buttervolume purge --dryrun <pattern> <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
-to live in ``/var/lib/docker/buttervolumes``.
+to live in ``/var/lib/buttervolume/volumes``.
 
 ``<pattern>`` is the snapshot retention pattern. It is a semicolon-separated
 list of time length specifiers with a unit. Units can be ``m`` for minutes,
@@ -449,12 +449,12 @@ in a file as follows (tested on Debian 8):
 * Stop docker, create required mount point and restart docker::
 
     $ sudo systemctl stop docker \
-        && sudo mkdir -p /var/lib/docker/buttervolumes \
+        && sudo mkdir -p /var/lib/buttervolume/volumes \
         && sudo mkdir -p /var/lib/docker/snapshots \
         && sudo mkdir -p /var/lib/docker/received \
-        && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/docker/buttervolumes \
-        && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/docker/snapshots \
-        && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/docker/received \
+        && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes \
+        && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots \
+        && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received \
         && sudo systemctl start docker
 
 * once you are done with your test when you can umount those volume and you will
@@ -462,11 +462,66 @@ in a file as follows (tested on Debian 8):
 
 
     $ sudo systemctl stop docker \
-        && sudo umount /var/lib/docker/buttervolumes \
+        && sudo umount /var/lib/buttervolume/volumes \
         && sudo umount /var/lib/docker/snapshots \
         && sudo umount /var/lib/docker/received \
         && sudo systemctl start docker \
         && sudo rm /var/lib/docker/btrfs.img
+
+
+Migrate from version 1 to version 2
+***********************************
+
+If you used version 1, the ``volumes`` and ``snapshots`` folders were located in
+``/var/lib/docker/``. They have been moved to ``/var/lib/buttervolume`` by default in
+version 2, but it is now configurable.
+
+You have two options :
+
+    * **Option 1**: you keep everything at the same place but you should add a
+      ``/etc/buttervolume/config.ini`` file in the buttervolume container with the
+      following contents::
+
+        [DEFAULT]
+        VOLUMES_PATH = /var/lib/docker/volumes
+        SNAPSHOTS_PATH = /var/lib/docker/snapshots
+
+      This is actually not the recommended option because of `issue 16 <https://github.com/anybox/buttervolume/issues/16>`_
+
+    * **Option 2** (recommended): you stop everything and you move the two folders ``/var/lib/docker/volumes`` and ``/var/lib/docker/snapshots`` into ``/var/lib/buttervolume``.
+
+        * If these two folders live in the same BTRFS subvolume, here are the actions to be done:
+
+            * Stop all containers using btrfs volumes and stop buttervolume
+            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume container
+            * Move ``/var/lib/docker/snapshots`` to ``/var/lib/buttervolume/snapshots``
+            * Move ``btrfs`` docker volumes from ``/var/lib/docker/volumes`` to ``/var/lib/buttervolume/volumes``
+              You have to take care of the possible superposition of ``btrfs`` volumes and ``local`` volumes with the same name in ``/var/lib/docker/volumes``. This probably should be enough ::
+    
+                # for vol in $(docker volume ls|grep ^btrfs|awk '{print $2}'); do
+                #     mv /var/lib/docker/volumes/$vol /var/lib/buttervolume/volumes/
+                # done
+
+            * Delete, rebuild and restart the buttervolume container
+            * Restart all other services
+
+        * If these two folders live in their own subvolumes:
+
+            * Stop all containers using btrfs volumes and stop buttervolume
+            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume container
+            * Move (or remount) ``/var/lib/docker/snapshots`` to ``/var/lib/buttervolume/snapshots``
+            * Move (or remount) ``/var/lib/docker/volumes`` to ``/var/lib/buttervolume/volumes``
+            * Move ``local`` docker volumes from ``/var/lib/buttervolume/volumes`` back to ``/var/lib/docker/volumes``
+              You have to take care of the possible superposition of ``btrfs`` volumes and ``local`` volumes with the same name in ``/var/lib/buttervolume/volumes``. This probably should be enough ::
+    
+                # for vol in $(docker volume ls|grep ^local|awk '{print $2}'); do
+                #     mv /var/lib/buttervolume/volumes/$vol /var/lib/docker/volumes/
+                # done
+
+            * Delete, rebuild and restart the buttervolume container
+            * Check that volumes are correctly listed with ``docker volume ls``
+            * Restart all other services
+            
 
 Credits
 *******
