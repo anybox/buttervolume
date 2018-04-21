@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import requests_unixsocket
+import signal
 from requests.exceptions import ConnectionError
 import sys
 import urllib
@@ -211,6 +212,8 @@ class Arg():
             setattr(self, k, v)
 
 
+CURRENTTIMER = None
+
 def scheduler(config=SCHEDULE, test=False):
     """Read the scheduler config and apply it, then scheduler again.
     WARNING: this should be guaranteed against runtime errors
@@ -221,7 +224,9 @@ def scheduler(config=SCHEDULE, test=False):
     if not os.path.exists(config):
         log.warn('No config file %s', config)
         if not test:
-            Timer(TIMER, scheduler).start()
+            global CURRENTTIMER
+            CURRENTTIMER = Timer(TIMER, scheduler)
+            CURRENTTIMER.start()
         return
     name = action = timer = ''
     # run each action in the schedule if time is elapsed since the last one
@@ -288,7 +293,15 @@ def scheduler(config=SCHEDULE, test=False):
                           config, name, action, timer, str(e))
     # schedule the next run
     if not test:  # run only once
-        Timer(TIMER, scheduler).start()
+        global CURRENTTIMER
+        CURRENTTIMER = Timer(TIMER, scheduler)
+        CURRENTTIMER.start()
+
+
+def shutdown(signum, frame):
+    global CURRENTTIMER
+    CURRENTTIMER.cancel()
+    sys.exit(0)
 
 
 def run(args):
@@ -300,8 +313,12 @@ def run(args):
         os.makedirs(SNAPSHOTS_PATH, exist_ok=True)
     # run a thread for the scheduled snapshots
     print('Starting scheduler job every {}s'.format(TIMER))
-    Timer(1, scheduler).start()
+    global CURRENTTIMER
+    CURRENTTIMER = Timer(1, scheduler)
+    CURRENTTIMER.start()
+    signal.signal(signal.SIGTERM, shutdown)
     # listen to requests
+    print('Listening to requests...')
     serve(app, unix_socket=SOCKET, unix_socket_perms='660')
 
 
