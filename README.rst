@@ -9,8 +9,9 @@ BTRFS Volume plugin for Docker
 This package provides a Docker volume plugin that creates a BTRFS subvolume for
 each container volume.
 
-Please note this is **not** a BTRFS storage driver for Docker, but a plugin to manage only
-volumes. It means you can use any storage driver, such as AUFS, this is independant topic.
+Please note this is **not** a BTRFS storage driver for Docker, but a plugin to
+manage volumes. It means you can use any storage driver, such as AUFS, this is
+an independant topic.
 
 .. contents::
 
@@ -27,8 +28,8 @@ mounted as a filesystem and snapshotted individually.
 On the other hand, `Docker volumes
 <https://docs.docker.com/engine/tutorials/dockervolumes/>`_ are commonly used
 to store persistent data of stateful containers, such as a MySQL/PostgreSQL
-database or an upload directory of a CMS. By default, Docker volumes are just a
-dumb directory in the host filesystem.  A number of `Volume plugins
+database or an upload directory of a CMS. By default, Docker volumes are just
+local directories in the host filesystem.  A number of `Volume plugins
 <https://docs.docker.com/engine/extend/legacy_plugins/#/volume-plugins>`_
 already exist for various storage backends, including distributed filesystems,
 but small clusters often can't afford to deploy a distributed filesystem.
@@ -37,42 +38,69 @@ We believe BTRFS subvolumes are a powerful and lightweight storage solution for
 Docker volumes, allowing fast and easy replication (and backup) across several
 nodes of a small cluster.
 
+Prerequisites
+*************
 
-Build
-*****
+Make sure the directory ``/var/lib/buttervolume/`` is living in a BTRFS
+filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
 
-You can build a docker image with the provided Dockerfile::
+You should also create the directories for the config and ssh on the host::
 
-    $ cd docker
-    $ docker build -t buttervolume .
+    $ sudo mkdir /var/lib/buttervolume/{config,ssh}
+
+
+Build and run
+*************
+
+You first need to create a root filesystem for the plugin, using the provided Dockerfile::
+
+    $ git clone https://github.com/anybox/buttervolume
+    $ cd buttervolume/docker
+    $ docker build -t rootfs .
+    $ id=$(docker create rootfs true)
+    $ sudo mkdir rootfs
+    $ sudo docker export "$id" | sudo tar -x -C rootfs
+    $ docker rm -vf "$id"
+    $ docker rmi rootfs
+
+Then you can create the plugin and push it to the image repository::
+
+    $ docker plugin create anybox/buttervolume .
+    $ docker push anybox/buttervolume
+
+Now you can enable the plugin, which should start buttervolume in the plugin
+container. Note that you cannot choose an alias for the plugin (such as btrfs)
+this way. You have to use the ``docker plugin install`` command instead::
+
+    $ docker plugin enable anybox/buttervolume
+
+You can check it is responding by running a buttervolume command::
+
+    $ sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ list
+    $ sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ exec -t 1609a69ede84966fcd939399f4b6bf644b6d732a9222951a6225f0d348361c1a buttervolume scheduled
+
+You can also locally install and run the plugin with::
+
+    $ pyvenv venv
+    $ ./venv/bin/python setup.py develop
+    $ sudo ./venv/bin/buttervolume run
 
 
 Install and run
 ***************
 
-Make sure the directory ``/var/lib/buttervolume/`` is living in a BTRFS
-filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
-You should also create the directory for the unix socket of the plugin::
+It the plugin is already pushed to the image repository, you can install it with::
 
-    $ sudo mkdir /run/docker/plugins
+    $ docker plugin install anybox/buttervolume
 
-Then create a container for buttervolume with access to the host volumes and
-the unix socket
+Check it is running::
 
-Either from the image you just built::
+    $ docker plugin ls
 
-    $ sudo docker create --privileged -v /var/lib/docker:/var/lib/docker -v /run/docker/plugins/:/run/docker/plugins/ --name buttervolume buttervolume
-    $ docker start buttervolume
+And try a buttervolume command::
 
-Or directly by pulling a `prebaked image <https://hub.docker.com/r/anybox/buttervolume/>`_ from the Docker hub::
-
-    $ docker run --privileged -v /var/lib/buttervolume/volumes:/var/lib/buttervolume/volumes -v /run/docker/plugins:/run/docker/plugins anybox/buttervolume
-
-You can also locally install and run the plugin with::
-
-    $ virtualenv venv
-    $ ./venv/bin/python setup.py develop
-    $ sudo ./venv/bin/buttervolume run
+    $ docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ list
+    $ docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ exec -t 1609a69ede84966fcd939399f4b6bf644b6d732a9222951a6225f0d348361c1a buttervolume scheduled
 
 
 Configure
@@ -498,6 +526,25 @@ You have two options :
               and ``local`` volumes which should be in ``/var/lib/docker/volumes``
             * Restart docker, delete, rebuild and restart the buttervolume container
             * Restart all other services
+
+Migrate from version 2.0 to version 3.0
+***************************************
+
+You just need to copy the ssh and config files from buttervolume 2 to
+buttervolume 3::
+
+    $ docker cp buttervolume_plugin_1:/etc/buttervolume /var/lib/buttervolume/config
+    $ docker cp buttervolume_plugin_1:/root/.ssh /var/lib/buttervolume/ssh
+
+Then stop the old buttervolume 2::
+
+    $ docker stop buttervolume_plugin_1
+    $ docker rm -v buttervolume_plugin_1
+
+Then start the new buttervolume 3 as managed plugin::
+
+    $ docker plugin install anybox/buttervolume:3
+    
 
 
 Credits

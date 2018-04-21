@@ -24,7 +24,6 @@ RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/
     && cd .. \
     && rm -rf buttervolume
 
-VOLUME /etc/buttervolume
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["run"]

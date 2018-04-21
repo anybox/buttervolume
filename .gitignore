@@ -4,3 +4,4 @@ sandbox*
 *.egg-info/
 *pyc
 .eggs/
+docker/rootfs/

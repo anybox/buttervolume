@@ -1,0 +1,30 @@
+{
+	"Description": "BTRFS Volume Plugin for Docker",
+	"Documentation": "https://github.com/anybox/buttervolume/",
+	"Entrypoint": ["/entrypoint.sh", "run"],
+	"Mounts": [
+                {"Type": "bind",
+                 "Source": "/var/lib/buttervolume",
+                 "Destination": "/var/lib/buttervolume",
+	         "Options": ["rbind","rw"]},
+                {"Type": "bind",
+                 "Source": "/var/lib/buttervolume/config",
+                 "Destination": "/etc/buttervolume",
+	         "Options": ["rbind","rw"]},
+                {"Type": "bind",
+                 "Source": "/var/lib/buttervolume/ssh",
+                 "Destination": "/root/.ssh",
+	         "Options": ["rbind","rw"]}
+	],
+	"PropagatedMount": "/var/lib/buttervolume",
+	"Network": {
+		   "Type": "host"
+		   },
+	"Interface" : {
+		   "Types": ["docker.volumedriver/1.0"],
+		   "Socket": "btrfs.sock"
+	},
+	"Linux": {
+		"Capabilities": ["CAP_SYS_ADMIN"]
+	}
+}
