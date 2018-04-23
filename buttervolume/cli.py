@@ -9,7 +9,7 @@ from requests.exceptions import ConnectionError
 import sys
 import urllib
 from bottle import app
-from buttervolume.plugin import jsonloads, SCHEDULE
+from buttervolume.plugin import SCHEDULE
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
 from buttervolume.plugin import LOGLEVEL, SOCKET, TIMER, SCHEDULE_LOG
 from datetime import datetime, timedelta
@@ -22,6 +22,7 @@ from webtest import TestApp
 logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
 app = app()
+CURRENTTIMER = None
 
 
 class Session(object):
@@ -56,11 +57,11 @@ def get_from(resp, key):
     except:  # TestApp
         content = resp.body
     if resp.status_code == 200:
-        error = jsonloads(content)['Err']
+        error = json.loads(content.decode())['Err']
         if error:
             log.error(error)
             return False
-        return jsonloads(content).get(key)
+        return json.loads(content.decode()).get(key)
     else:
         log.error('%s: %s', resp.status_code, resp.reason)
         return False
@@ -211,8 +212,6 @@ class Arg():
         for k, v in kw.items():
             setattr(self, k, v)
 
-
-CURRENTTIMER = None
 
 def scheduler(config=SCHEDULE, test=False):
     """Read the scheduler config and apply it, then scheduler again.

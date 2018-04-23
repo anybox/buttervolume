@@ -9,7 +9,7 @@ from buttervolume import btrfs, cli
 from buttervolume import plugin
 from buttervolume.cli import scheduler
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH
-from buttervolume.plugin import jsonloads, compute_purges, DTFORMAT
+from buttervolume.plugin import compute_purges, DTFORMAT
 from datetime import datetime, timedelta
 from os.path import join
 from subprocess import check_output, run
@@ -19,6 +19,10 @@ from webtest import TestApp
 SCHEDULE = plugin.SCHEDULE = tempfile.mkstemp()[1]
 SCHEDULE_LOG = plugin.SCHEDULE_LOG
 PREFIX_TEST_VOLUME = 'buttervolume-test-'
+
+
+def jsonloads(stuff):
+    return json.loads(stuff.decode())
 
 
 class TestCase(unittest.TestCase):
