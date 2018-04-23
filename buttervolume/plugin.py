@@ -42,7 +42,7 @@ logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
 
 
-def handle_request(handler):
+def add_debug_log(handler):
     def new_handler():
         req = json.loads(request.body.read().decode() or '{}')
         log.debug('Request: %s %s', request.path, req)
@@ -53,13 +53,13 @@ def handle_request(handler):
 
 
 @route('/Plugin.Activate', ['POST'])
-@handle_request
+@add_debug_log
 def plugin_activate(req):
     return {'Implements': ['VolumeDriver']}
 
 
 @route('/VolumeDriver.Create', ['POST'])
-@handle_request
+@add_debug_log
 def volume_create(req):
     name = req['Name']
     if '@' in name:
@@ -87,41 +87,43 @@ def volumepath(name):
 
 
 @route('/VolumeDriver.Mount', ['POST'])
-@handle_request
+@add_debug_log
 def volume_mount(req):
-    path = volumepath(req['Name'])
+    name = req['Name']
+    path = volumepath(name)
     if path is None:
-        return {'Err': '{}: no such volume'.format(req['Name'])}
+        return {'Err': '{}: no such volume'.format(name)}
     return {'Mountpoint': path, 'Err': ''}
 
 
 @route('/VolumeDriver.Path', ['POST'])
-@handle_request
+@add_debug_log
 def volume_path(req):
-    path = volumepath(req['Name'])
+    name = req['Name']
+    path = volumepath(name)
     if path is None:
-        return {'Err': '{}: no such volume'.format(req['Name'])}
+        return {'Err': '{}: no such volume'.format(name)}
     return {'Mountpoint': path, 'Err': ''}
 
 
 @route('/VolumeDriver.Unmount', ['POST'])
-@handle_request
+@add_debug_log
 def volume_unmount(req):
     return {'Err': ''}
 
 
 @route('/VolumeDriver.Get', ['POST'])
-@handle_request
+@add_debug_log
 def volume_get(req):
     name = req['Name']
-    path = join(VOLUMES_PATH, name)
-    if not btrfs.Subvolume(path).exists():
-        return {'Err': '{}: no such volume'.format(path)}
+    path = volumepath(name)
+    if path is None:
+        return {'Err': '{}: no such volume'.format(name)}
     return {'Volume': {'Name': name, 'Mountpoint': path}, 'Err': ''}
 
 
 @route('/VolumeDriver.Remove', ['POST'])
-@handle_request
+@add_debug_log
 def volume_remove(req):
     name = req['Name']
     path = join(VOLUMES_PATH, name)
@@ -134,7 +136,7 @@ def volume_remove(req):
 
 
 @route('/VolumeDriver.List', ['POST'])
-@handle_request
+@add_debug_log
 def volume_list(req):
     return list_volumes()
 
@@ -150,7 +152,7 @@ def list_volumes():
 
 
 @route('/VolumeDriver.Volume.Sync', ['POST'])
-@handle_request
+@add_debug_log
 def volume_sync(req):
     """Rsync between two nodes"""
     test = req.get('Test', False)
@@ -188,7 +190,7 @@ def volume_sync(req):
 
 
 @route('/VolumeDriver.Capabilities', ['POST'])
-@handle_request
+@add_debug_log
 def driver_cap(req):
     """butter volumes are local to the active node.
     They only exist as snapshots on the remote nodes.
@@ -197,7 +199,7 @@ def driver_cap(req):
 
 
 @route('/VolumeDriver.Snapshot.Send', ['POST'])
-@handle_request
+@add_debug_log
 def snapshot_send(req):
     """The last sent snapshot is remembered by adding a suffix with the target
     """
@@ -252,7 +254,7 @@ def snapshot_send(req):
 
 
 @route('/VolumeDriver.Snapshot', ['POST'])
-@handle_request
+@add_debug_log
 def volume_snapshot(req):
     """snapshot a volume in the SNAPSHOTS dir
     """
@@ -271,7 +273,7 @@ def volume_snapshot(req):
 
 
 @route('/VolumeDriver.Snapshot.List', ['POST'])
-@handle_request
+@add_debug_log
 def snapshot_list(req):
     name = req.get('Name')
     snapshots = os.listdir(SNAPSHOTS_PATH)
@@ -281,7 +283,7 @@ def snapshot_list(req):
 
 
 @route('/VolumeDriver.Snapshot.Remove', ['POST'])
-@handle_request
+@add_debug_log
 def snapshot_delete(req):
     name = req['Name']
     path = join(SNAPSHOTS_PATH, name)
@@ -296,7 +298,7 @@ def snapshot_delete(req):
 
 
 @route('/VolumeDriver.Schedule', ['POST'])
-@handle_request
+@add_debug_log
 def schedule(req):
     """Schedule or unschedule a job
     TODO add a lock
@@ -322,7 +324,7 @@ def schedule(req):
 
 
 @route('/VolumeDriver.Schedule.List', ['GET'])
-@handle_request
+@add_debug_log
 def schedule_list(req):
     """List scheduled jobs
     """
@@ -335,7 +337,7 @@ def schedule_list(req):
 
 
 @route('/VolumeDriver.Snapshot.Restore', ['POST'])
-@handle_request
+@add_debug_log
 def snapshot_restore(req):
     """
     Snapshot a volume and overwrite it with the specified snapshot.
@@ -372,7 +374,7 @@ def snapshot_restore(req):
 
 
 @route('/VolumeDriver.Clone', ['POST'])
-@handle_request
+@add_debug_log
 def snapshot_clone(req):
     """
     Create a new volume as clone from another.
@@ -393,7 +395,7 @@ def snapshot_clone(req):
 
 
 @route('/VolumeDriver.Snapshots.Purge', ['POST'])
-@handle_request
+@add_debug_log
 def snapshots_purge(req):
     """
     Purge snapshots with a retention pattern
