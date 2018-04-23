@@ -91,7 +91,7 @@ def volumepath(name):
 def volume_mount(req):
     path = volumepath(req['Name'])
     if path is None:
-        return {'Err': '{}: no such volume'.format(path)}
+        return {'Err': '{}: no such volume'.format(req['Name'])}
     return {'Mountpoint': path, 'Err': ''}
 
 
@@ -100,7 +100,7 @@ def volume_mount(req):
 def volume_path(req):
     path = volumepath(req['Name'])
     if path is None:
-        return {'Err': '{}: no such volume'.format(path)}
+        return {'Err': '{}: no such volume'.format(req['Name'])}
     return {'Mountpoint': path, 'Err': ''}
 
 
