@@ -45,7 +45,7 @@ log = logging.getLogger()
 def handle_request(handler):
     def new_handler():
         req = json.loads(request.body.read().decode() or '{}')
-        log.debug('Request: %s', req)
+        log.debug('Request: %s %s', (request.path, req))
         resp = json.dumps(handler(req))
         log.debug('Response: %s', resp)
         return resp
