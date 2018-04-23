@@ -12,7 +12,9 @@ RUN set -x; \
         unzip \
         rsync \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /run/docker/plugins
+    && mkdir -p /run/docker/plugins \
+    && mkdir -p /var/lib/buttervolume/{volumes,snapshots} \
+    && mkdir /etc/buttervolume /root/.ssh
 
 ENV VERSION master
 RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/${VERSION}.zip \

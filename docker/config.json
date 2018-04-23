@@ -6,16 +6,17 @@
                 {"Type": "bind",
                  "Source": "/var/lib/buttervolume",
                  "Destination": "/var/lib/buttervolume",
-	         "Options": ["rbind","rw"]},
+                 "Options": ["rbind"]},
                 {"Type": "bind",
                  "Source": "/var/lib/buttervolume/config",
                  "Destination": "/etc/buttervolume",
-	         "Options": ["rbind","rw"]},
+                 "Options": ["rbind"]},
                 {"Type": "bind",
                  "Source": "/var/lib/buttervolume/ssh",
                  "Destination": "/root/.ssh",
-	         "Options": ["rbind","rw"]}
+                 "Options": ["rbind"]}
 	],
+        "PropagatedMount": "/var/lib/buttervolume",
 	"Network": {
 		   "Type": "host"
 		   },
