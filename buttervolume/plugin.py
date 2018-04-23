@@ -71,7 +71,7 @@ def volume_create(req):
     try:
         btrfs.Subvolume(volpath).create()
     except CalledProcessError as e:
-        return {'Err': e.stderr}
+        return {'Err': e.stderr.decode()}
     except OSError as e:
         return {'Err': e.strerror}
     except Exception as e:
@@ -243,7 +243,7 @@ def snapshot_send(req):
             log.error('Failed sending full snapshot '
                       '(stdout: %s, stderr: %s)',
                       e.stdout, e.stderr)
-            return {'Err': str(e.stderr)}
+            return {'Err': e.stderr.decode()}
     btrfs.Subvolume(snapshot_path).snapshot(
         '{}@{}'.format(snapshot_path, remote_host), readonly=True)
     for old_snapshot in sent_snapshots:
