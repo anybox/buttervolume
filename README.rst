@@ -56,12 +56,7 @@ You first need to create a root filesystem for the plugin, using the provided Do
 
     $ git clone https://github.com/anybox/buttervolume
     $ cd buttervolume/docker
-    $ docker build -t rootfs .
-    $ id=$(docker create rootfs true)
-    $ sudo mkdir rootfs
-    $ sudo docker export "$id" | sudo tar -x -C rootfs
-    $ docker rm -vf "$id"
-    $ docker rmi rootfs
+    $ ./rebuild_rootfs.sh
 
 Then you can create the plugin and push it to the image repository::
 
