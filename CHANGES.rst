@@ -1,11 +1,13 @@
 CHANGELOG
 =========
 
-3.0 (unreleased)
+3.0 (2018-04-24)
 ****************
 
-- Use the docker managed plugin system
+- Now use the docker *managed plugin* system
 - Stop the scheduler before shutdown to avoid a 5s timeout
+- Improved logging
+- Improved the migration doc from version 1 or 2
 
 2.0 (2018-03-24)
 ****************

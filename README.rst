@@ -46,39 +46,40 @@ filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
 
 You should also create the directories for the config and ssh on the host::
 
-    $ sudo mkdir /var/lib/buttervolume/{config,ssh}
+    sudo mkdir /var/lib/buttervolume/{config,ssh}
 
 
 Build and run
 *************
 
+If you don't want to be a contributor but just run the plugin, jump to the next section.
+
 You first need to create a root filesystem for the plugin, using the provided Dockerfile::
 
-    $ git clone https://github.com/anybox/buttervolume
-    $ cd buttervolume/docker
-    $ ./rebuild_rootfs.sh
+    git clone https://github.com/anybox/buttervolume
+    cd buttervolume/docker
+    ./rebuild_rootfs.sh
 
-Then you can create the plugin and push it to the image repository::
+Then you can create the plugin::
 
-    $ docker plugin create anybox/buttervolume .
-    $ docker push anybox/buttervolume
+    docker plugin create anybox/buttervolume .
 
 Now you can enable the plugin, which should start buttervolume in the plugin
-container. Note that you cannot choose an alias for the plugin (such as btrfs)
-this way. You have to use the ``docker plugin install`` command instead::
+container::
 
-    $ docker plugin enable anybox/buttervolume
+    docker plugin enable anybox/buttervolume
 
 You can check it is responding by running a buttervolume command::
 
-    $ sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ list
-    $ sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ exec -t 1609a69ede84966fcd939399f4b6bf644b6d732a9222951a6225f0d348361c1a buttervolume scheduled
+    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
+    alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
+    sudo buttervolume scheduled
 
 You can also locally install and run the plugin with::
 
-    $ pyvenv venv
-    $ ./venv/bin/python setup.py develop
-    $ sudo ./venv/bin/buttervolume run
+    pyvenv venv
+    ./venv/bin/python setup.py develop
+    sudo ./venv/bin/buttervolume run
 
 
 Install and run
@@ -86,16 +87,17 @@ Install and run
 
 It the plugin is already pushed to the image repository, you can install it with::
 
-    $ docker plugin install anybox/buttervolume
+    docker plugin install anybox/buttervolume
 
 Check it is running::
 
-    $ docker plugin ls
+    docker plugin ls
 
 And try a buttervolume command::
 
-    $ docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ list
-    $ docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/ exec -t 1609a69ede84966fcd939399f4b6bf644b6d732a9222951a6225f0d348361c1a buttervolume scheduled
+    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
+    alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
+    buttervolume scheduled
 
 
 Configure
@@ -122,7 +124,7 @@ Example of ``config.ini`` file::
     [DEFAULT]
     TIMER = 120
 
-If none of this is configured, the following default values are taken:
+If none of this is configured, the following default values are used:
 
     * ``VOLUMES_PATH = /var/lib/buttervolume/volumes/``
     * ``SNAPSHOTS_PATH = /var/lib/buttervolume/snapshots/``
@@ -142,7 +144,7 @@ Running the plugin
 
 If you installed it locally, You can start the plugin with::
 
-    $ sudo buttervolume run
+    sudo buttervolume run
 
 If you're running it in a privileged container, it will be automatically started.
 
@@ -190,7 +192,7 @@ Create a snapshot
 
 You can create a readonly snapshot of the volume with::
 
-    $ buttervolume snapshot <volume>
+    buttervolume snapshot <volume>
 
 The volumes are currently expected to live in ``/var/lib/buttervolume/volumes`` and
 the snapshot will be created in ``/var/lib/docker/snapshots``, by appending the
@@ -202,11 +204,11 @@ List the snapshots
 
 You can list all the snapshots::
 
-    $ buttervolume snapshots
+    buttervolume snapshots
 
 or just the snapshots corresponding to a volume with::
 
-    $ buttervolume snapshots <volume>
+    buttervolume snapshots <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
 to live in ``/var/lib/buttervolume/volumes``.
@@ -221,7 +223,7 @@ volume name instead of a snapshot, the **latest snapshot** is restored. So no
 data is lost if you do something wrong. Please take care of stopping the
 container before restoring a snapshot::
 
-    $ buttervolume restore <snapshot>
+    buttervolume restore <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
 to live in ``/var/lib/docker/snapshots``.
@@ -230,7 +232,7 @@ By default, the volume name corresponds to the volume the snapshot was created
 from. But you can optionally restore the snapshot to a different volume name by
 adding the target as the second argument::
 
-    $ buttervolume restore <snapshot> <volume>
+    buttervolume restore <snapshot> <volume>
 
 
 Clone a volume
@@ -240,7 +242,7 @@ You can clone a volume as a new volume. The current volume will be cloned
 as a new volume name given as parameter. Please take care of stopping the
 container before clonning a volume::
 
-    $ buttervolume clone <volume> <new_volume>
+    buttervolume clone <volume> <new_volume>
 
 ``<volume>`` is the name of the volume to be cloned, not the full path. It is expected
 to live in ``/var/lib/buttervolume/volumes``.
@@ -253,7 +255,7 @@ Delete a snapshot
 
 You can delete a snapshot with::
 
-    $ buttervolume rm <snapshot>
+    buttervolume rm <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
 to live in ``/var/lib/docker/snapshots``.
@@ -269,7 +271,7 @@ the next snapshots are used to only send the difference between the current one
 and the previous one. This allows to replicate snapshots very often without
 consuming a lot of bandwith or disk space::
 
-    $ buttervolume send <host> <snapshot>
+    buttervolume send <host> <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
 to live in ``/var/lib/docker/snapshots`` and is replicated to the same path on
@@ -290,7 +292,7 @@ the remote host with the **same name**, it will get new and most recent data
 from the distantant volume and replace in the local volume. Before running the
 ``rsync`` command a snapshot is made on the locale machine to manage recovery::
 
-    $ buttervolume sync <volume> <host1> [<host2>][...]
+    buttervolume sync <volume> <host1> [<host2>][...]
 
 The intent is to synchronize a volume between multi hosts on running
 containers, so you should schedule that action on each nodes from all remote
@@ -311,13 +313,13 @@ Purge old snapshots
 
 You can purge old snapshot corresponding to the specified volume, using a retention pattern::
 
-    $ buttervolume purge <pattern> <volume>
+    buttervolume purge <pattern> <volume>
 
 If you're unsure whether you retention pattern is correct, you can run the
 purge with the ``--dryrun`` option, to inspect what snapshots would be deleted,
 without deleting them::
 
-    $ buttervolume purge --dryrun <pattern> <volume>
+    buttervolume purge --dryrun <pattern> <volume>
 
 ``<volume>`` is the name of the volume, not the full path. It is expected
 to live in ``/var/lib/buttervolume/volumes``.
@@ -352,37 +354,37 @@ synchronization or a purge. The schedule it self is stored in
 
 **Schedule a snapshot** of a volume every 60 minutes::
 
-    $ buttervolume schedule snapshot 60 <volume>
+    buttervolume schedule snapshot 60 <volume>
 
 Remove the same schedule by specifying a timer of 0 min::
 
-    $ buttervolume schedule snapshot 0 <volume>
+    buttervolume schedule snapshot 0 <volume>
 
 **Schedule a replication** of volume ``foovolume`` to ``remote_host``::
 
-    $ buttervolume schedule replicate:remote_host 3600 foovolume
+    buttervolume schedule replicate:remote_host 3600 foovolume
 
 Remove the same schedule::
 
-    $ buttervolume schedule replicate:remote_host 0 foovolume
+    buttervolume schedule replicate:remote_host 0 foovolume
 
 **Schedule a purge** every hour of the snapshots of volume ``foovolume``, but
 keep all the snapshots in the last 4 hours, then only one snapshot every 4
 hours during the first week, then one snapshot every week during one year, then
 delete all snapshots after one year::
 
-    $ buttervolume schedule purge:4h:1w:1y 60 foovolume
+    buttervolume schedule purge:4h:1w:1y 60 foovolume
 
 Remove the same schedule::
 
-    $ buttervolume schedule purge:4h:1w:1y 0 foovolume
+    buttervolume schedule purge:4h:1w:1y 0 foovolume
 
 Using the right combination of snapshot schedule timer, purge schedule timer
 and purge retention pattern, you can create you own backup strategy, from the
 simplest ones to more elaborate ones. A common one is the following::
 
-    $ buttervolume schedule snapshot 1440 <volume>
-    $ buttervolume schedule purge:1d:4w:1y 1440 <volume>
+    buttervolume schedule snapshot 1440 <volume>
+    buttervolume schedule purge:1d:4w:1y 1440 <volume>
 
 It should create a snapshot every day, then purge snapshots everydays while
 keeping all snapshots in the last 24h, then one snapshot per day during one
@@ -391,11 +393,11 @@ month, then one snapshot per month during only one year.
 **Schedule a syncrhonization** of volume ``foovolume`` from ``remote_host1``
 abd ``remote_host2``::
 
-    $ buttervolume schedule synchronize:remote_host1,remote_host2 60 foovolume
+    buttervolume schedule synchronize:remote_host1,remote_host2 60 foovolume
 
 Remove the same schedule::
 
-    $ buttervolume schedule synchronize:remote_host1,remote_host2 0 foovolume
+    buttervolume schedule synchronize:remote_host1,remote_host2 0 foovolume
 
 
 List scheduled jobs
@@ -403,7 +405,7 @@ List scheduled jobs
 
 You can list all the scheduled job with::
 
-    $ buttervolume scheduled
+    buttervolume scheduled
 
 It will display the schedule in the same format used for adding the schedule,
 which is convenient to remove an existing schedule or add a similar one.
@@ -427,120 +429,112 @@ Test
 If your volumes directory is a BTRFS partition or volume, tests can be run
 with::
 
-    $ sudo SSH_PORT=22 python3 setup.py test
+    sudo SSH_PORT=22 python3 setup.py test
 
 22 being the port of your running ssh server with authorized key,
 or using and testing the docker image (with python >= 3.5)::
 
-    $ docker build -t anybox/buttervolume docker/
-    $ sudo docker run -it --rm --privileged \
-        -v /var/lib/docker:/var/lib/docker \
-        -v "$PWD":/usr/src/buttervolume \
-        -w /usr/src/buttervolume \
-        anybox/buttervolume test
+    docker build -t anybox/buttervolume docker/
+    sudo docker run -it --rm --privileged \
+      -v /var/lib/docker:/var/lib/docker \
+      -v "$PWD":/usr/src/buttervolume \
+      -w /usr/src/buttervolume \
+      anybox/buttervolume test
 
 If you have no BTRFS partitions or volumes you can setup a virtual partition
 in a file as follows (tested on Debian 8):
 
-* Setup BTRFS virtual partition::
+Setup BTRFS virtual partition::
 
-    $ sudo qemu-img create /var/lib/docker/btrfs.img 10G
-    Formatting '/var/lib/docker/btrfs.img', fmt=raw size=10737418240
-    $ sudo mkfs.btrfs /var/lib/docker/btrfs.img
-    Btrfs v3.17
-    See http://btrfs.wiki.kernel.org for more information.
-
-    Turning ON incompat feature 'extref': increased hardlink limit per file to 65536
-    ERROR: device scan failed '/var/lib/docker/btrfs.img' - Block device required
-    fs created label (null) on /var/lib/docker/btrfs.img
-        nodesize 16384 leafsize 16384 sectorsize 4096 size 10.00GiB
+    sudo qemu-img create /var/lib/docker/btrfs.img 10G
+    sudo mkfs.btrfs /var/lib/docker/btrfs.img
 
 .. note::
 
    you can ignore the error, in fact the new FS is formatted
 
-* Mount the partition somewhere temporarily to create 3 new BTRFS subvolumes::
+Mount the partition somewhere temporarily to create 3 new BTRFS subvolumes::
 
-    $ sudo mkdir /tmp/btrfs_mount_point \
-        && sudo mount -o loop /var/lib/docker/btrfs.img /tmp/btrfs_mount_point/ \
-        && sudo btrfs subvolume create /tmp/btrfs_mount_point/snapshots \
-        && sudo btrfs subvolume create /tmp/btrfs_mount_point/volumes \
-        && sudo btrfs subvolume create /tmp/btrfs_mount_point/received \
-        && sudo umount /tmp/btrfs_mount_point/ \
-        && sudo rm -r /tmp/btrfs_mount_point/
+    sudo -s
+    mkdir /tmp/btrfs_mount_point
+    mount -o loop /var/lib/docker/btrfs.img /tmp/btrfs_mount_point/
+    btrfs subvolume create /tmp/btrfs_mount_point/snapshots
+    btrfs subvolume create /tmp/btrfs_mount_point/volumes
+    btrfs subvolume create /tmp/btrfs_mount_point/received
+    umount /tmp/btrfs_mount_point/
+    rm -r /tmp/btrfs_mount_point/
 
-* Stop docker, create required mount point and restart docker::
+Stop docker, create required mount point and restart docker::
 
-    $ sudo systemctl stop docker \
-        && sudo mkdir -p /var/lib/buttervolume/volumes \
-        && sudo mkdir -p /var/lib/docker/snapshots \
-        && sudo mkdir -p /var/lib/docker/received \
-        && sudo mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes \
-        && sudo mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots \
-        && sudo mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received \
-        && sudo systemctl start docker
+    systemctl stop docker
+    mkdir -p /var/lib/buttervolume/volumes
+    mkdir -p /var/lib/docker/snapshots
+    mkdir -p /var/lib/docker/received
+    mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes
+    mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots
+    mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received
+    systemctl start docker
 
-* once you are done with your test when you can umount those volume and you will
-  find back your previous docker volumes::
-
-
-    $ sudo systemctl stop docker \
-        && sudo umount /var/lib/buttervolume/volumes \
-        && sudo umount /var/lib/docker/snapshots \
-        && sudo umount /var/lib/docker/received \
-        && sudo systemctl start docker \
-        && sudo rm /var/lib/docker/btrfs.img
+Once you are done with your test, you can unmount those volumes and you will
+find back your previous docker volumes::
 
 
-Migrate from version 1.x to version 2.x
-***************************************
+    systemctl stop docker
+    umount /var/lib/buttervolume/volumes
+    umount /var/lib/docker/snapshots
+    umount /var/lib/docker/received
+    systemctl start docker
+    rm /var/lib/docker/btrfs.img
 
-If you used version 1, the ``volumes`` and ``snapshots`` folders were located in
-``/var/lib/docker/``. They have been moved to ``/var/lib/buttervolume`` by default in
-version 2, but it is now configurable.
 
-You have two options :
+Migrate to version 3
+********************
 
-    * **Option 1**: you keep everything at the same place but you should add a
-      ``/etc/buttervolume/config.ini`` file in the buttervolume container with the
-      following contents::
+If you're currently using Buttervolume 1.x or 2.0 in production, you must
+carefully follow the guidelines below to migrate to version 3.
 
-        [DEFAULT]
-        VOLUMES_PATH = /var/lib/docker/volumes
-        SNAPSHOTS_PATH = /var/lib/docker/snapshots
+First copy the ssh and config files::
 
-      This is actually not the recommended option because of `issue 16 <https://github.com/anybox/buttervolume/issues/16>`_
+    sudo -s
+    docker cp buttervolume_plugin_1:/etc/buttervolume /var/lib/buttervolume/config
+    docker cp buttervolume_plugin_1:/root/.ssh /var/lib/buttervolume/ssh
 
-    * **Option 2** (recommended): you stop everything and you move the two folders ``/var/lib/docker/volumes`` and ``/var/lib/docker/snapshots`` into ``/var/lib/buttervolume``.
+Then stop all your containers, excepted buttervolume
 
-            * Stop docker (systemctl stop docker)
-            * Make a backup of your ``/etc/buttervolume/schedule.csv`` from the buttervolume config volume
-            * Depending on your setup, move ``/var/lib/docker/snapshots`` and
-              ``/var/lib/docker/volumes`` into ``/var/lib/buttervolume/``. WARNING: take care
-              of separating ``btrfs`` volumes, which should be in ``/var/lib/buttervolume/``
-              and ``local`` volumes which should be in ``/var/lib/docker/volumes``
-            * Restart docker, delete, rebuild and restart the buttervolume container
-            * Restart all other services
+Now snapshot and delete all your volumes::
 
-Migrate from version 2.0 to version 3.0
-***************************************
+    volumes=$(docker volume ls -f driver=btrfs --format "{{.Name}}"); echo $volumes
+    for v in $volumes; do docker exec buttervolume_plugin_1 buttervolume snapshot $v; docker volume rm $v; done
 
-You just need to copy the ssh and config files from buttervolume 2 to
-buttervolume 3::
+Then stop the buttervolume container, **remove the old btrfs.sock file**, and
+restart docker::
 
-    $ docker cp buttervolume_plugin_1:/etc/buttervolume /var/lib/buttervolume/config
-    $ docker cp buttervolume_plugin_1:/root/.ssh /var/lib/buttervolume/ssh
+    docker stop buttervolume_plugin_1
+    docker rm -v buttervolume_plugin_1
+    rm /run/docker/plugins/btrfs.sock
+    systemctl restart docker
 
-Then stop the old buttervolume 2::
+If you were using Buttervolume 1.x, you must move your snapshots to the new location::
 
-    $ docker stop buttervolume_plugin_1
-    $ docker rm -v buttervolume_plugin_1
+    rmdir /var/lib/buttervolume/snapshots
+    mv /var/lib/docker/snapshots /var/lib/buttervolume/snapshots
 
-Then start the new buttervolume 3 as managed plugin::
+Change your volume configurations (in your compose files) to use the new
+``anybox/buttervolume`` driver name instead of ``btrfs``
 
-    $ docker plugin install anybox/buttervolume:3
-    
+Then start the new buttervolume 3.x as a managed plugin and check it is started::
 
+    docker plugin install anybox/buttervolume
+    docker plugin ls
+
+Then recreate all your volumes with the new driver and restore them from the snapshots::
+
+    for v in $volumes; do docker volume create -d anybox/buttervolume $v; done
+    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
+    alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
+    for v in $volumes; do buttervolume restore $v; done
+
+Then restart your containers
 
 Credits
 *******
