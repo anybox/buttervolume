@@ -493,11 +493,12 @@ Migrate to version 3
 If you're currently using Buttervolume 1.x or 2.0 in production, you must
 carefully follow the guidelines below to migrate to version 3.
 
-First copy the ssh and config files::
+First copy the ssh and config files and disable the scheduler::
 
     sudo -s
     docker cp buttervolume_plugin_1:/etc/buttervolume /var/lib/buttervolume/config
     docker cp buttervolume_plugin_1:/root/.ssh /var/lib/buttervolume/ssh
+    mv /var/lib/buttervolume/config/scheduler.csv /var/lib/buttervolume/config/scheduler.csv.disabled
 
 Then stop all your containers, excepted buttervolume
 
@@ -530,13 +531,17 @@ Then start the new buttervolume 3.x as a managed plugin and check it is started:
 
 Then recreate all your volumes with the new driver and restore them from the snapshots::
 
-    for v in $volumes; do docker volume create -d anybox/buttervolume $v; done
+    for v in $volumes; do docker volume create -d anybox/buttervolume:latest $v; done
     alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
     alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
-    # FIXME : don't restore the last one but the one before (due to the snapshot at startup)!!
+    # WARNING : check the the volume you will restore are the correct ones
     for v in $volumes; do buttervolume restore $v; done
 
-Then restart your containers
+Then restart your containers, check they are ok with the correct data.
+
+Reenable the schedule::
+
+    mv /var/lib/buttervolume/config/scheduler.csv.disabled /var/lib/buttervolume/config/scheduler.csv
 
 Credits
 *******
