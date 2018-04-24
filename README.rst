@@ -504,7 +504,8 @@ Then stop all your containers, excepted buttervolume
 Now snapshot and delete all your volumes::
 
     volumes=$(docker volume ls -f driver=btrfs --format "{{.Name}}"); echo $volumes
-    for v in $volumes; do docker exec buttervolume_plugin_1 buttervolume snapshot $v; docker volume rm $v; done
+    for v in $volumes; do docker exec buttervolume_plugin_1 buttervolume snapshot $v; done
+    for v in $volumes; do docker volume rm $v; done
 
 Then stop the buttervolume container, **remove the old btrfs.sock file**, and
 restart docker::
@@ -532,6 +533,7 @@ Then recreate all your volumes with the new driver and restore them from the sna
     for v in $volumes; do docker volume create -d anybox/buttervolume $v; done
     alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
     alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
+    # FIXME : don't restore the last one but the one before (due to the snapshot at startup)!!
     for v in $volumes; do buttervolume restore $v; done
 
 Then restart your containers
