@@ -11,7 +11,7 @@ import urllib
 from bottle import app
 from buttervolume.plugin import SCHEDULE
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
-from buttervolume.plugin import LOGLEVEL, SOCKET, TIMER, SCHEDULE_LOG
+from buttervolume.plugin import LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
 from datetime import datetime, timedelta
 from subprocess import CalledProcessError
 from threading import Timer
@@ -75,7 +75,7 @@ def snapshot(args, test=False):
     else:
         resp = Session().post(
             'http+unix://{}{}'
-            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            .format(urllib.parse.quote_plus(USOCKET), urlpath),
             param)
     res = get_from(resp, 'Snapshot')
     if res:
@@ -91,7 +91,7 @@ def schedule(args):
         'Timer': args.timer[0]})
     resp = Session().post(
         'http+unix://{}{}'.format(
-            urllib.parse.quote_plus(SOCKET), urlpath), param)
+            urllib.parse.quote_plus(USOCKET), urlpath), param)
     res = get_from(resp, '')
     return res
 
@@ -100,7 +100,7 @@ def scheduled(args):
     urlpath = '/VolumeDriver.Schedule.List'
     resp = Session().get(
         'http+unix://{}{}'
-        .format(urllib.parse.quote_plus(SOCKET), urlpath))
+        .format(urllib.parse.quote_plus(USOCKET), urlpath))
     scheduled = get_from(resp, 'Schedule')
     if scheduled:
         print('\n'.join(["{Action} {Timer} {Name}".format(**job)
@@ -111,7 +111,7 @@ def scheduled(args):
 def snapshots(args):
     resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.List'
-        .format(urllib.parse.quote_plus(SOCKET)),
+        .format(urllib.parse.quote_plus(USOCKET)),
         json.dumps({'Name': args.name}))
     snapshots = get_from(resp, 'Snapshots')
     if snapshots:
@@ -122,7 +122,7 @@ def snapshots(args):
 def restore(args):
     resp = Session().post(
         'http+unix://{}/VolumeDriver.Snapshot.Restore'
-        .format(urllib.parse.quote_plus(SOCKET)),
+        .format(urllib.parse.quote_plus(USOCKET)),
         json.dumps({'Name': args.name[0], 'Target': args.target}))
     res = get_from(resp, 'VolumeBackup')
     if res:
@@ -133,7 +133,7 @@ def restore(args):
 def clone(args):
     resp = Session().post(
         'http+unix://{}/VolumeDriver.Clone'
-        .format(urllib.parse.quote_plus(SOCKET)),
+        .format(urllib.parse.quote_plus(USOCKET)),
         json.dumps({'Name': args.name[0], 'Target': args.target}))
     res = get_from(resp, 'VolumeCloned')
     if res:
@@ -150,7 +150,7 @@ def send(args, test=False):
     else:
         resp = Session().post(
             'http+unix://{}{}'
-            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            .format(urllib.parse.quote_plus(USOCKET), urlpath),
             json.dumps(param))
     res = get_from(resp, '')
     if res:
@@ -167,7 +167,7 @@ def sync(args, test=False):
     else:
         resp = Session().post(
             'http+unix://{}{}'
-            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            .format(urllib.parse.quote_plus(USOCKET), urlpath),
             json.dumps(param))
     res = get_from(resp, '')
     if res:
@@ -180,7 +180,7 @@ def remove(args):
     param = json.dumps({'Name': args.name[0]})
     resp = Session().post(
         ('http+unix://{}{}')
-        .format(urllib.parse.quote_plus(SOCKET), urlpath),
+        .format(urllib.parse.quote_plus(USOCKET), urlpath),
         param)
     res = get_from(resp, '')
     if res:
@@ -199,7 +199,7 @@ def purge(args, test=False):
     else:
         resp = Session().post(
             'http+unix://{}{}'
-            .format(urllib.parse.quote_plus(SOCKET), urlpath),
+            .format(urllib.parse.quote_plus(USOCKET), urlpath),
             json.dumps(param))
     res = get_from(resp, '')
     if res:

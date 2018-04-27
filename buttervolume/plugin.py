@@ -35,13 +35,15 @@ DRIVERNAME = getconfig(config, 'DRIVERNAME', 'anybox/buttervolume:latest')
 RUNPATH = getconfig(config, 'RUNPATH', '/run/docker')
 SOCKET = getconfig(config, 'SOCKET',
                    os.path.join(RUNPATH, 'plugins', 'btrfs.sock'))
-if not os.path.exists(SOCKET):
+USOCKET = SOCKET
+if not os.path.exists(USOCKET):
+    # socket path on the host or another container
     plugins = json.loads(
         run('docker plugin inspect {}'.format(DRIVERNAME),
             shell=True, stdout=PIPE, stderr=PIPE).stdout.decode())
     if plugins:
         plugin = plugins[0]  # can we have several plugins with the same name?
-        SOCKET = os.path.join(RUNPATH, 'plugins', plugin['Id'], 'btrfs.sock')
+        USOCKET = os.path.join(RUNPATH, 'plugins', plugin['Id'], 'btrfs.sock')
 
 TIMER = int(getconfig(config, 'TIMER', 60))
 DTFORMAT = getconfig(config, 'DTFORMAT', '%Y-%m-%dT%H:%M:%S.%f')
