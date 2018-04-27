@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+3.3 (2018-04-27)
+****************
+
+- Fixed a bug preventing a start in certain conditions
+
 3.2 (2018-04-27)
 ****************
 
