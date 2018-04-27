@@ -2,6 +2,7 @@
 
 SSH_PORT=${SSH_PORT:-1122}
 
+chown -R root: /root/
 sed -r "s/[#]{0,1}Port [0-9]{2,5}/Port $SSH_PORT/g" /etc/ssh/sshd_config -i
 service ssh start
 
