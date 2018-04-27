@@ -40,7 +40,7 @@ if not os.path.exists(USOCKET):
     # socket path on the host or another container
     plugins = json.loads(
         run('docker plugin inspect {}'.format(DRIVERNAME),
-            shell=True, stdout=PIPE, stderr=PIPE).stdout.decode())
+            shell=True, stdout=PIPE, stderr=PIPE).stdout.decode() or '[]')
     if plugins:
         plugin = plugins[0]  # can we have several plugins with the same name?
         USOCKET = os.path.join(RUNPATH, 'plugins', plugin['Id'], 'btrfs.sock')
