@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+3.4 (2018-04-27)
+****************
+
+- fix rights at startup so that ssh works
+
 3.3 (2018-04-27)
 ****************
 
