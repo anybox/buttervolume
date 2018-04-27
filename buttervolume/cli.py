@@ -218,12 +218,12 @@ def scheduler(config=SCHEDULE, test=False):
     WARNING: this should be guaranteed against runtime errors
     otherwise the next scheduler won't run
     """
+    global CURRENTTIMER
     log.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
         log.warn('No config file %s', config)
         if not test:
-            global CURRENTTIMER
             CURRENTTIMER = Timer(TIMER, scheduler)
             CURRENTTIMER.start()
         return
@@ -292,7 +292,6 @@ def scheduler(config=SCHEDULE, test=False):
                           config, name, action, timer, str(e))
     # schedule the next run
     if not test:  # run only once
-        global CURRENTTIMER
         CURRENTTIMER = Timer(TIMER, scheduler)
         CURRENTTIMER.start()
 
@@ -304,6 +303,7 @@ def shutdown(signum, frame):
 
 
 def run(args):
+    global CURRENTTIMER
     if not os.path.exists(VOLUMES_PATH):
         log.info('Creating %s', VOLUMES_PATH)
         os.makedirs(VOLUMES_PATH, exist_ok=True)
@@ -312,7 +312,6 @@ def run(args):
         os.makedirs(SNAPSHOTS_PATH, exist_ok=True)
     # run a thread for the scheduled snapshots
     print('Starting scheduler job every {}s'.format(TIMER))
-    global CURRENTTIMER
     CURRENTTIMER = Timer(1, scheduler)
     CURRENTTIMER.start()
     signal.signal(signal.SIGTERM, shutdown)
