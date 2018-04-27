@@ -31,8 +31,18 @@ TEST_REMOTE_PATH = getconfig(config, 'TEST_REMOTE_PATH',
                              '/var/lib/buttervolume/received/')
 SCHEDULE = getconfig(config, 'SCHEDULE',
                      '/etc/buttervolume/schedule.csv')
+DRIVERNAME = getconfig(config, 'DRIVERNAME', 'anybox/buttervolume:latest')
+RUNPATH = getconfig(config, 'RUNPATH', '/run/docker')
 SOCKET = getconfig(config, 'SOCKET',
-                   '/run/docker/plugins/btrfs.sock')
+                   os.path.join(RUNPATH, 'plugins', 'btrfs.sock'))
+if not os.path.exists(SOCKET):
+    plugins = json.loads(
+        run('docker plugin inspect {}'.format(DRIVERNAME),
+            shell=True, stdout=PIPE, stderr=PIPE).stdout.decode())
+    if plugins:
+        plugin = plugins[0]  # can we have several plugins with the same name?
+        SOCKET = os.path.join(RUNPATH, 'plugins', plugin['Id'], 'btrfs.sock')
+
 TIMER = int(getconfig(config, 'TIMER', 60))
 DTFORMAT = getconfig(config, 'DTFORMAT', '%Y-%m-%dT%H:%M:%S.%f')
 LOGLEVEL = getattr(logging, getconfig(config, 'LOGLEVEL', 'INFO'))

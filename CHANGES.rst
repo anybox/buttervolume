@@ -1,10 +1,12 @@
 CHANGELOG
 =========
 
-3.1 (unreleased)
+3.1 (2018-04-27)
 ****************
 
 - Fixed a declaration in Python 3.6
+- Automatically detects the btrfs.sock path
+- Made the runpath and drivername configurable
 
 3.0 (2018-04-24)
 ****************

@@ -105,10 +105,12 @@ Configure
 
 You can configure the following variables:
 
+    * ``DRIVERNAME``: the full name of the driver (with the tag)
     * ``VOLUMES_PATH``: the path were the BTRFS volumes are located
     * ``SNAPSHOTS_PATH``: the path were the BTRFS snapshots are located
     * ``TEST_REMOTE_PATH``: the path during unit tests were the remote BTRFS snapshots are located
     * ``SCHEDULE``: the path of the scheduler configuration
+    * ``RUNPATH``: the path of the docker run directory (/run/docker)
     * ``SOCKET``: the path of the unix socket were buttervolume listen
     * ``TIMER``: the number of seconds between two runs of the scheduler
     * ``DTFORMAT``: the format of the datetime in the logs
@@ -126,11 +128,13 @@ Example of ``config.ini`` file::
 
 If none of this is configured, the following default values are used:
 
+    * ``DRIVERNAME = anybox/buttervolume:latest``
     * ``VOLUMES_PATH = /var/lib/buttervolume/volumes/``
     * ``SNAPSHOTS_PATH = /var/lib/buttervolume/snapshots/``
     * ``TEST_REMOTE_PATH = /var/lib/buttervolume/received/``
     * ``SCHEDULE = /etc/buttervolume/schedule.csv``
-    * ``SOCKET = /run/docker/plugins/btrfs.sock``
+    * ``RUNPATH = /run/docker``
+    * ``SOCKET = $RUNPATH/plugins/btrfs.sock``
     * ``TIMER = 60``
     * ``DTFORMAT = %Y-%m-%dT%H:%M:%S.%f``
     * ``LOGLEVEL = INFO``
