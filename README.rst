@@ -502,7 +502,7 @@ First copy the ssh and config files and disable the scheduler::
     sudo -s
     docker cp buttervolume_plugin_1:/etc/buttervolume /var/lib/buttervolume/config
     docker cp buttervolume_plugin_1:/root/.ssh /var/lib/buttervolume/ssh
-    mv /var/lib/buttervolume/config/scheduler.csv /var/lib/buttervolume/config/scheduler.csv.disabled
+    mv /var/lib/buttervolume/config/schedule.csv /var/lib/buttervolume/config/schedule.csv.disabled
 
 Then stop all your containers, excepted buttervolume
 
@@ -545,7 +545,7 @@ Then restart your containers, check they are ok with the correct data.
 
 Reenable the schedule::
 
-    mv /var/lib/buttervolume/config/scheduler.csv.disabled /var/lib/buttervolume/config/scheduler.csv
+    mv /var/lib/buttervolume/config/schedule.csv.disabled /var/lib/buttervolume/config/schedule.csv
 
 Credits
 *******
