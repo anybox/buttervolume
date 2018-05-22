@@ -526,11 +526,11 @@ If you were using Buttervolume 1.x, you must move your snapshots to the new loca
     mv /var/lib/docker/snapshots /var/lib/buttervolume/snapshots
 
 Change your volume configurations (in your compose files) to use the new
-``anybox/buttervolume`` driver name instead of ``btrfs``
+``anybox/buttervolume:latest`` driver name instead of ``btrfs``
 
 Then start the new buttervolume 3.x as a managed plugin and check it is started::
 
-    docker plugin install anybox/buttervolume
+    docker plugin install anybox/buttervolume:latest
     docker plugin ls
 
 Then recreate all your volumes with the new driver and restore them from the snapshots::
