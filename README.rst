@@ -518,13 +518,21 @@ restart docker::
     docker stop buttervolume_plugin_1
     docker rm -v buttervolume_plugin_1
     rm /run/docker/plugins/btrfs.sock
-    systemctl restart docker
+    systemctl stop docker
 
 If you were using Buttervolume 1.x, you must move your snapshots to the new location::
 
-    rmdir /var/lib/buttervolume/snapshots
     mkdir /var/lib/buttervolume/snapshots
     for i in *; do btrfs subvolume snapshot -r $i /var/lib/buttervolume/snapshots/$i; done
+
+Restore /var/lib/docker/volumes as the original folder::
+
+    mkdir /var/lib/docker/volumes.new
+    mv /var/lib/docker/volumes/* /var/lib/docker/volumes.new/
+    umount volumes  # if this was a mounted btrfs subvolume
+    mv volumes.new/* volumes/
+    rmdir volumes.new
+    systemctl start docker
 
 Change your volume configurations (in your compose files) to use the new
 ``anybox/buttervolume:latest`` driver name instead of ``btrfs``
