@@ -523,7 +523,8 @@ restart docker::
 If you were using Buttervolume 1.x, you must move your snapshots to the new location::
 
     rmdir /var/lib/buttervolume/snapshots
-    mv /var/lib/docker/snapshots /var/lib/buttervolume/snapshots
+    mkdir /var/lib/buttervolume/snapshots
+    for i in *; do btrfs subvolume snapshot -r $i /var/lib/buttervolume/snapshots/$i; done
 
 Change your volume configurations (in your compose files) to use the new
 ``anybox/buttervolume:latest`` driver name instead of ``btrfs``
