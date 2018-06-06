@@ -119,7 +119,9 @@ You can configure the following variables:
 The configuration can be done in this order of priority:
 
     #. from an environment variable prefixed with ``BUTTERVOLUME_`` (ex: ``BUTTERVOLUME_TIMER=120``)
-    #. from the ``/etc/buttervolume/config.ini`` file in the [DEFAULT] section
+    #. from the [DEFAULT] section of the ``/etc/buttervolume/config.ini`` file
+       inside the container or ``/var/lib/buttervolume/config/config.ini`` on the
+       host
 
 Example of ``config.ini`` file::
 
