@@ -71,7 +71,7 @@ container::
 
 You can check it is responding by running a buttervolume command::
 
-    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
+    alias drunc="sudo docker-runc --root /run/docker/plugins/runtime-root/plugins.moby/"
     alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
     sudo buttervolume scheduled
 
@@ -93,11 +93,19 @@ Check it is running::
 
     docker plugin ls
 
+Define useful aliases::
+
+    alias drunc="sudo docker-runc --root /run/docker/plugins/runtime-root/plugins.moby/"
+    alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
+
 And try a buttervolume command::
 
-    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
-    alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
     buttervolume scheduled
+
+Or create a volume with the driver. Note that the name of the driver is the
+name of the plugin::
+
+    docker volume create -d anybox/buttervolume:latest myvolume
 
 
 Configure
@@ -136,7 +144,7 @@ If none of this is configured, the following default values are used:
     * ``TEST_REMOTE_PATH = /var/lib/buttervolume/received/``
     * ``SCHEDULE = /etc/buttervolume/schedule.csv``
     * ``RUNPATH = /run/docker``
-    * ``SOCKET = $RUNPATH/plugins/btrfs.sock``
+    * ``SOCKET = $RUNPATH/plugins/btrfs.sock`` # only if run manually
     * ``TIMER = 60``
     * ``DTFORMAT = %Y-%m-%dT%H:%M:%S.%f``
     * ``LOGLEVEL = INFO``
@@ -148,16 +156,41 @@ Usage
 Running the plugin
 ------------------
 
-If you installed it locally, You can start the plugin with::
+The normal way to run it is as a new-style Docker Plugin as described above in
+the "Install and run" section, which will start it automatically.  This will
+create a ``/run/docker/plugins/<uuid>/btrfs.sock`` file to be used by the
+Docker daemon. The ``<uuid>`` is the unique identifier of the `runc/OCI`
+container running it.  This means you can probably run several versions of the
+plugin simultaneously but this is currently not recommended unless you keep in
+mind the volumes and snapshots are in the same place for the different
+versions. Otherwise you can configure a different path for the volumes and
+snapshots of each different versions using the ``config.ini`` file.
+
+Then the name of the volume driver is the name of the plugin::
+
+    docker volume create -d anybox/buttervolume:latest myvolume
+
+or::
+
+    docker create --volume-driver=anybox/buttervolume:latest
+
+However if you installed it locally as a Python distribution, you can also
+start it manually with::
 
     sudo buttervolume run
 
-If you're running it in a privileged container, it will be automatically started.
+In this case it will create a unix socket in ``/run/docker/plugins/btrfs.sock``
+for use by Docker with the legacy plugin system. Then the name of the volume
+driver is the name of the socket file::
 
-When started it will create a unix socket ``/var/run/docker/plugins/btrfs.sock`` for use by
-Docker. The name of the socket file is actually the name of the plugin you can
-use with ``docker volume create -d <driver>`` or ``docker create --volume-driver=<driver>``.  when started, the plugin will also start
-its own scheduler to run periodic jobs (such as a snapshot, replication, purge or synchronization)
+    docker volume create -d btrfs myvolume
+
+or::
+
+    docker create --volume-driver=btrfs
+
+When started, the plugin will also start its own scheduler to run periodic jobs
+(such as a snapshot, replication, purge or synchronization)
 
 
 Creating and deleting volumes
@@ -550,7 +583,7 @@ Then start the new buttervolume 3.x as a managed plugin and check it is started:
 Then recreate all your volumes with the new driver and restore them from the snapshots::
 
     for v in $volumes; do docker volume create -d anybox/buttervolume:latest $v; done
-    alias drunc="sudo docker-runc --root /var/run/docker/plugins/runtime-root/plugins.moby/"
+    alias drunc="sudo docker-runc --root /run/docker/plugins/runtime-root/plugins.moby/"
     alias buttervolume="drunc exec -t `drunc list|tail -n+2|awk '{print $1}'` buttervolume"
     # WARNING : check the the volume you will restore are the correct ones
     for v in $volumes; do buttervolume restore $v; done
