@@ -543,7 +543,8 @@ Then stop all your containers, excepted buttervolume
 
 Now snapshot and delete all your volumes::
 
-    volumes=$(docker volume ls -f driver=btrfs --format "{{.Name}}"); echo $volumes
+    volumes=$(docker volume ls -f driver=btrfs --format "{{.Name}}")
+    # or: # volumes=$(docker volume ls -f driver=btrfs|tail -n+2|awk '{print $2}')
     echo $volumes
     for v in $volumes; do docker exec buttervolume_plugin_1 buttervolume snapshot $v; done
     for v in $volumes; do docker volume rm $v; done
