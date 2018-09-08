@@ -321,6 +321,7 @@ the remote host.
 currently sent using BTRFS send/receive through ssh. This requires that ssh
 keys be present and already authorized on the target host (under ``/var/lib/buttervolume/ssh``), and that the
 ``StrictHostKeyChecking no`` option be enabled in ``/var/lib/buttervolume/ssh/config`` on local host.
+
 Please note you have to restart you docker daemons each time you change ssh configuration.
 
 
