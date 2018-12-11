@@ -1,10 +1,11 @@
 CHANGELOG
 =========
 
-3.6 (unreleased)
+3.6 (2018-12-11)
 ****************
 
-- 
+- fixed zombie sshd processes inside the plugin
+- minor documentation change
 
 3.5 (2018-06-07)
 ****************

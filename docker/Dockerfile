@@ -26,6 +26,7 @@ RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/
     && cd .. \
     && rm -rf buttervolume
 
+# add tini to avoid sshd zombie processes
 ENV TINI_VERSION v0.18.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
