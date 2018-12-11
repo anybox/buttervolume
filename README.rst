@@ -113,6 +113,7 @@ Upgrade
 You must force disable it before reinstalling it (as explained in the docker documentation)::
 
     docker plugin disable -f anybox/buttervolume
+    docker plugin rm -f anybox/buttervolume
     docker plugin install anybox/buttervolume
 
 
