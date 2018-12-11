@@ -26,6 +26,10 @@ RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/
     && cd .. \
     && rm -rf buttervolume
 
+ENV TINI_VERSION v0.18.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
+
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["run"]

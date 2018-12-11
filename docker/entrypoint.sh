@@ -18,5 +18,5 @@ if [[ $1 == 'test' ]]; then
 
     exec python3 setup.py $@
 else
-    exec buttervolume $@
+    /tini -- buttervolume $@
 fi
