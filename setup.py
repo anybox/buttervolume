@@ -7,7 +7,7 @@ if sys.version_info < (3, 5):
 
 setup(
     name="buttervolume",
-    version="3.7dev",
+    version="3.7",
     author="Christophe Combelles",
     author_email="ccomb@anybox.fr",
     url="https://github.com/anybox/buttervolume",
@@ -23,7 +23,7 @@ setup(
     },
     install_requires=[
         "bottle",
-        "urllib3<=1.22",
+        "urllib3",
         "requests-unixsocket",
         "waitress",
         "webtest",
