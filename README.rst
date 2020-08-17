@@ -254,7 +254,7 @@ You can create a readonly snapshot of the volume with::
     buttervolume snapshot <volume>
 
 The volumes are currently expected to live in ``/var/lib/buttervolume/volumes`` and
-the snapshot will be created in ``/var/lib/docker/snapshots``, by appending the
+the snapshot will be created in ``/var/lib/buttervolume/snapshots``, by appending the
 datetime to the name of the volume, separated with ``@``.
 
 
@@ -317,7 +317,7 @@ You can delete a snapshot with::
     buttervolume rm <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
-to live in ``/var/lib/docker/snapshots``.
+to live in ``/var/lib/buttervolume/snapshots``.
 
 
 Replicate a snapshot to another host
@@ -529,8 +529,8 @@ Stop docker, create required mount point and restart docker::
 
     systemctl stop docker
     mkdir -p /var/lib/buttervolume/volumes
-    mkdir -p /var/lib/docker/snapshots
-    mkdir -p /var/lib/docker/received
+    mkdir -p /var/lib/buttervolume/snapshots
+    mkdir -p /var/lib/buttervolume/received
     mount -o loop,subvol=volumes /var/lib/docker/btrfs.img /var/lib/buttervolume/volumes
     mount -o loop,subvol=snapshots /var/lib/docker/btrfs.img /var/lib/buttervolume/snapshots
     mount -o loop,subvol=received /var/lib/docker/btrfs.img /var/lib/buttervolume/received
@@ -542,8 +542,8 @@ find back your previous docker volumes::
 
     systemctl stop docker
     umount /var/lib/buttervolume/volumes
-    umount /var/lib/docker/snapshots
-    umount /var/lib/docker/received
+    umount /var/lib/buttervolume/snapshots
+    umount /var/lib/buttervolume/received
     systemctl start docker
     rm /var/lib/docker/btrfs.img
 
