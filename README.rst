@@ -285,7 +285,7 @@ container before restoring a snapshot::
     buttervolume restore <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
-to live in ``/var/lib/docker/snapshots``.
+to live in ``/var/lib/buttervolume/snapshots``.
 
 By default, the volume name corresponds to the volume the snapshot was created
 from. But you can optionally restore the snapshot to a different volume name by
@@ -333,7 +333,7 @@ consuming a lot of bandwith or disk space::
     buttervolume send <host> <snapshot>
 
 ``<snapshot>`` is the name of the snapshot, not the full path. It is expected
-to live in ``/var/lib/docker/snapshots`` and is replicated to the same path on
+to live in ``/var/lib/buttervolume/snapshots`` and is replicated to the same path on
 the remote host.
 
 
