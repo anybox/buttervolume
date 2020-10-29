@@ -134,12 +134,12 @@ Configure
 You can configure the following variables:
 
     * ``DRIVERNAME``: the full name of the driver (with the tag)
-    * ``VOLUMES_PATH``: the path were the BTRFS volumes are located
-    * ``SNAPSHOTS_PATH``: the path were the BTRFS snapshots are located
-    * ``TEST_REMOTE_PATH``: the path during unit tests were the remote BTRFS snapshots are located
+    * ``VOLUMES_PATH``: the path where the BTRFS volumes are located
+    * ``SNAPSHOTS_PATH``: the path where the BTRFS snapshots are located
+    * ``TEST_REMOTE_PATH``: the path during unit tests where the remote BTRFS snapshots are located
     * ``SCHEDULE``: the path of the scheduler configuration
     * ``RUNPATH``: the path of the docker run directory (/run/docker)
-    * ``SOCKET``: the path of the unix socket were buttervolume listen
+    * ``SOCKET``: the path of the unix socket where buttervolume listens
     * ``TIMER``: the number of seconds between two runs of the scheduler
     * ``DTFORMAT``: the format of the datetime in the logs
     * ``LOGLEVEL``: the Python log level (INFO, DEBUG, etc.)
