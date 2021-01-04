@@ -71,7 +71,8 @@ container::
 
 You can check it is responding by running a buttervolume command::
 
-    alias drunc="sudo runc --root /run/docker/plugins/runtime-root/plugins.moby/"
+    export RUNCROOT=/run/docker/runtime-runc/plugins.moby/ # or /run/docker/plugins/runtime-root/plugins.moby/
+    alias drunc="sudo runc --root $RUNCROOT"
     alias buttervolume="drunc exec -t $(drunc list|tail -n+2|awk '{print $1}') buttervolume"
     sudo buttervolume scheduled
 
@@ -93,9 +94,10 @@ Check it is running::
 
     docker plugin ls
 
-Define useful aliases::
+Find your runc root, then define useful aliases::
 
-    alias drunc="sudo runc --root /run/docker/plugins/runtime-root/plugins.moby/"
+    export RUNCROOT=/run/docker/runtime-runc/plugins.moby/ # or /run/docker/plugins/runtime-root/plugins.moby/
+    alias drunc="sudo runc --root $RUNCROOT"
     alias buttervolume="drunc exec -t $(drunc list|tail -n+2|awk '{print $1}') buttervolume"
 
 And try a buttervolume command::
@@ -111,7 +113,8 @@ Note that instead of using aliases, you can also define functions that you
 can put in your .bash_profile or .bash_aliases::
 
     function drunc () {
-      sudo runc --root /run/docker/plugins/runtime-root/plugins.moby/ $@
+      RUNCROOT=/run/docker/runtime-runc/plugins.moby/ # or /run/docker/plugins/runtime-root/plugins.moby/
+      sudo runc --root $RUNCROOT $@
     }
     function buttervolume () {
       drunc exec -t $(docker plugin ls --no-trunc  | grep 'anybox/buttervolume:latest' |  awk '{print $1}') buttervolume $@
@@ -606,7 +609,8 @@ Then start the new buttervolume 3.x as a managed plugin and check it is started:
 Then recreate all your volumes with the new driver and restore them from the snapshots::
 
     for v in $volumes; do docker volume create -d anybox/buttervolume:latest $v; done
-    alias drunc="sudo runc --root /run/docker/plugins/runtime-root/plugins.moby/"
+    export RUNCROOT=/run/docker/runtime-runc/plugins.moby/ # or /run/docker/plugins/runtime-root/plugins.moby/
+    alias drunc="sudo runc --root $RUNCROOT"
     alias buttervolume="drunc exec -t $(drunc list|tail -n+2|awk '{print $1}') buttervolume"
     # WARNING : check the the volume you will restore are the correct ones
     for v in $volumes; do buttervolume restore $v; done
