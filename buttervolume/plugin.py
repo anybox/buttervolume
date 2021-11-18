@@ -81,7 +81,10 @@ def volume_create(req):
     if name in [v['Name']for v in list_volumes()['Volumes']]:
         return {'Err': ''}
     try:
-        btrfs.Subvolume(volpath).create()
+        if 'copyonwrite' in name:
+            btrfs.Subvolume(volpath).create(cow=True)
+        else:
+            btrfs.Subvolume(volpath).create()
     except CalledProcessError as e:
         return {'Err': e.stderr.decode()}
     except OSError as e:
