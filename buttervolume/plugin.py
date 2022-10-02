@@ -74,14 +74,27 @@ def plugin_activate(req):
 @add_debug_log
 def volume_create(req):
     name = req['Name']
+    opts = req['Opts']
+
     if '@' in name:
         return {'Err': '"@" is illegal in a volume name'}
     volpath = join(VOLUMES_PATH, name)
     # volume already exists?
     if name in [v['Name']for v in list_volumes()['Volumes']]:
         return {'Err': ''}
+
     try:
-        btrfs.Subvolume(volpath).create()
+        option_copyonwrite = opts['copyonwrite'].lower()
+        if option_copyonwrite not in ["true", "false"]:
+            return {'Err': f'Invalid option for copyonwrite: {option_copyonwrite}. Set to "true" or "false".'}
+        option_copyonwrite = option_copyonwrite == "true"
+
+    except KeyError:
+        # default is to not use copy-on-write
+        option_copyonwrite = False
+
+    try:
+        btrfs.Subvolume(volpath).create(cow=option_copyonwrite)
     except CalledProcessError as e:
         return {'Err': e.stderr.decode()}
     except OSError as e:
