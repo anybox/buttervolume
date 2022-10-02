@@ -1,4 +1,4 @@
-FROM debian:stretch
+FROM debian:buster
 MAINTAINER Christophe Combelles. <ccomb@anybox.fr>
 
 RUN set -x; \
