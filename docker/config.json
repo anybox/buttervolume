@@ -26,5 +26,15 @@
     },
     "Linux": {
         "Capabilities": ["CAP_SYS_ADMIN"]
-    }
+    },
+    "Env": [
+        {
+            "Name": "SSH_PORT",
+            "Description": "SSH Port",
+            "Settable": [
+                "value"
+            ],
+            "Value": "1122"
+        }
+    ]
 }
