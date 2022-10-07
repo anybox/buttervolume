@@ -1,5 +1,6 @@
-FROM debian:buster
+FROM debian:bullseye
 MAINTAINER Christophe Combelles. <ccomb@anybox.fr>
+
 
 RUN set -x; \
     apt-get update \
@@ -13,7 +14,8 @@ RUN set -x; \
         rsync \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /run/docker/plugins \
-    && mkdir -p /var/lib/buttervolume/{volumes,snapshots} \
+    && mkdir -p /var/lib/buttervolume/volumes \
+    && mkdir -p /var/lib/buttervolume/snapshots \
     && mkdir /etc/buttervolume /root/.ssh
 
 ENV VERSION master
@@ -27,7 +29,7 @@ RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/
     && rm -rf buttervolume
 
 # add tini to avoid sshd zombie processes
-ENV TINI_VERSION v0.18.0
+ENV TINI_VERSION v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
 
