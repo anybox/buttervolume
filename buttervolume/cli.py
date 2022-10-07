@@ -19,7 +19,7 @@ from threading import Timer
 from waitress import serve
 from webtest import TestApp
 
-VERSION = open(join(dirname(dirname(realpath(__file__))), "VERSION")).read().strip()
+VERSION = open(join(dirname(realpath(__file__)), "VERSION")).read().strip()
 logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
 app = app()

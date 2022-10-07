@@ -2,7 +2,9 @@ from os.path import dirname, join, realpath
 from setuptools import setup, find_packages
 import sys
 
-VERSION = open(join(dirname(realpath(__file__)), "VERSION")).read().strip()
+VERSION = (
+    open(join(dirname(realpath(__file__)), "buttervolume", "VERSION")).read().strip()
+)
 
 if sys.version_info < (3, 5):
     sys.exit(
@@ -20,6 +22,7 @@ setup(
     description="Docker plugin to manage Docker Volumes as BTRFS subvolumes",
     long_description=open("README.rst").read() + "\n" + open("CHANGES.rst").read(),
     packages=find_packages(),
+    package_data={"": ["VERSION"]},
     entry_points={
         "console_scripts": [
             "buttervolume = buttervolume.cli:main",
