@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-3.8 (unreleased)
+3.8 (2022-10-07)
 ****************
 
 - Switched to copy-on-write by default
