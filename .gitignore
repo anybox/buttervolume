@@ -5,3 +5,4 @@ sandbox*
 *pyc
 .eggs/
 docker/rootfs/
+venv/

@@ -26,7 +26,7 @@ seen as an independant file namespace that can live in a directory and can be
 mounted as a filesystem and snapshotted individually.
 
 On the other hand, `Docker volumes
-<https://docs.docker.com/engine/tutorials/dockervolumes/>`_ are commonly used
+<https://docs.docker.com/storage/volumes/>`_ are commonly used
 to store persistent data of stateful containers, such as a MySQL/PostgreSQL
 database or an upload directory of a CMS. By default, Docker volumes are just
 local directories in the host filesystem.  A number of `Volume plugins
@@ -46,13 +46,15 @@ filesystem. It can be a BTRFS mountpoint or a BTRFS subvolume or both.
 
 You should also create the directories for the config and ssh on the host::
 
-    sudo mkdir /var/lib/buttervolume/{config,ssh}
+    sudo mkdir /var/lib/buttervolume
+    sudo mkdir /var/lib/buttervolume/config
+    sudo mkdir /var/lib/buttervolume/ssh
 
 
-Build and run
-*************
+Build and run as a contributor
+******************************
 
-If you don't want to be a contributor but just run the plugin, jump to the next section.
+If you want to be a contributor, read this chapter. Otherwise jump to the next section.
 
 You first need to create a root filesystem for the plugin, using the provided Dockerfile::
 
@@ -63,6 +65,12 @@ You first need to create a root filesystem for the plugin, using the provided Do
 Then you can create the plugin::
 
     docker plugin create anybox/buttervolume .
+
+At this point, you can set the SSH_PORT option for the plugin by running::
+
+    docker plugin set anybox/buttervolume SSH_PORT=1122
+
+Note that this option is only relevant if you use the replication feature between two nodes.
 
 Now you can enable the plugin, which should start buttervolume in the plugin
 container::
@@ -76,15 +84,19 @@ You can check it is responding by running a buttervolume command::
     alias buttervolume="drunc exec -t $(drunc list|tail -n+2|awk '{print $1}') buttervolume"
     sudo buttervolume scheduled
 
-You can also locally install and run the plugin with::
+You can also locally install and run the plugin in the foreground with::
 
-    pyvenv venv
+    python3 -m venv venv
     ./venv/bin/python setup.py develop
     sudo ./venv/bin/buttervolume run
 
+Then you can use the buttervolume CLI that was installed in developer mode in the venv::
 
-Install and run
-***************
+    ./venv/bin/buttervolume --version
+
+
+Install and run as a user
+*************************
 
 If the plugin is already pushed to the image repository, you can install it with::
 
@@ -195,9 +207,18 @@ Then the name of the volume driver is the name of the plugin::
 
 or::
 
-    docker create --volume-driver=anybox/buttervolume:latest
+    docker volume create --volume-driver=anybox/buttervolume:latest
 
-However if you installed it locally as a Python distribution, you can also
+When creating a volume, you can choose to disable copy-on-write on a per -olume
+basis. Just use the `-o` or `--opt` option as defined in the `Docker documentation
+<https://docs.docker.com/engine/reference/commandline/volume_create/#options>`_ ::
+
+    docker volume create -d anybox/buttervolume -o copyonwrite=false myvolume
+
+Running the plugin locally or in legacy mode
+--------------------------------------------
+
+If you installed it locally as a Python distribution, you can also
 start it manually with::
 
     sudo buttervolume run
@@ -341,12 +362,17 @@ the remote host.
 
 
 ``<host>`` is the hostname or IP address of the remote host. The snapshot is
-currently sent using BTRFS send/receive through ssh. This requires that ssh
-keys be present and already authorized on the target host (under ``/var/lib/buttervolume/ssh``), and that the
-``StrictHostKeyChecking no`` option be enabled in ``/var/lib/buttervolume/ssh/config`` on local host.
+currently sent using BTRFS send/receive through ssh, with an ssh server direcly
+included in the plugin. This requires that ssh keys be present and already
+authorized on the target host (under ``/var/lib/buttervolume/ssh``), and that
+the ``StrictHostKeyChecking no`` option be enabled in
+``/var/lib/buttervolume/ssh/config`` on local host.
 
 Please note you have to restart you docker daemons each time you change ssh configuration.
 
+The default SSH_PORT of the ssh server included in the plugin is **1122**. You can
+change it with `docker plugin set anybox/buttervolume SSH_PORT=<PORT>` before
+enabling the plugin.
 
 Synchronize a volume from another host volume
 ---------------------------------------------
@@ -478,13 +504,12 @@ which is convenient to remove an existing schedule or add a similar one.
 Copy-on-write
 -------------
 
-Copy-On-Write is disabled by default.
+Copy-On-Write is enabled by default. You can disable it if you want.
 
 Why disabling copy-on-write? If your docker volume stores databases such as
-PostgreSQL or MariaDB, the copy-on-write feature may hurt performance a lot.
-The good news is that disabling copy-on-write does not prevent from doing
-snaphots, so we get the best of both world: good performances with the ability
-to do snapshots.
+PostgreSQL or MariaDB, the copy-on-write feature may hurt performance, though
+the latest kernels have improve a lot. The good news is that disabling
+copy-on-write does not prevent from doing snaphots.
 
 
 Test

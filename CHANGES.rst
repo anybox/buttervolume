@@ -4,28 +4,33 @@ CHANGELOG
 3.8 (unreleased)
 ****************
 
-- 
+- Switched to copy-on-write by default
+- Allow to choose to enable/disable copy-on-write for each volume
+- Allow to change the default SSH_PORT in the plugin config
+- Updated the base docker image and dependencies
+- Added an option to show the version number
+- Improved documentation
 
 3.7 (2018-12-13)
 ****************
 
-- unpinned urllib3
+- Unpinned urllib3
 
 3.6 (2018-12-11)
 ****************
 
-- fixed zombie sshd processes inside the plugin
-- minor documentation change
+- Fixed zombie sshd processes inside the plugin
+- Minor documentation change
 
 3.5 (2018-06-07)
 ****************
 
-- improved documentation
+- Improved documentation
 
 3.4 (2018-04-27)
 ****************
 
-- fix rights at startup so that ssh works
+- Fix rights at startup so that ssh works
 
 3.3 (2018-04-27)
 ****************
