@@ -624,7 +624,11 @@ Reenable the schedule::
 Credits
 *******
 
+Thanks to:
+
 - Christophe Combelles
 - Pierre Verkest
 - Marcelo Ochoa
-
+- Christoph Rist
+- Philip Nagler-Frank
+- Yoann MOUGNIBAS
