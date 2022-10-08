@@ -380,7 +380,7 @@ Synchronize a volume from another host volume
 You can receive data from a remote volume, so in case there is a volume on
 the remote host with the **same name**, it will get new and most recent data
 from the distant volume and replace in the local volume. Before running the
-``rsync`` command a snapshot is made on the locale machine to manage recovery::
+``rsync`` command a snapshot is made on the local machine to manage recovery::
 
     buttervolume sync <volume> <host1> [<host2>][...]
 
@@ -508,7 +508,7 @@ Copy-On-Write is enabled by default. You can disable it if you want.
 
 Why disabling copy-on-write? If your docker volume stores databases such as
 PostgreSQL or MariaDB, the copy-on-write feature may hurt performance, though
-the latest kernels have improve a lot. The good news is that disabling
+the latest kernels have improved a lot. The good news is that disabling
 copy-on-write does not prevent from doing snaphots.
 
 
