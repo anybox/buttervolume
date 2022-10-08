@@ -209,7 +209,7 @@ or::
 
     docker volume create --volume-driver=anybox/buttervolume:latest
 
-When creating a volume, you can choose to disable copy-on-write on a per -olume
+When creating a volume, you can choose to disable copy-on-write on a per-volume
 basis. Just use the `-o` or `--opt` option as defined in the `Docker documentation
 <https://docs.docker.com/engine/reference/commandline/volume_create/#options>`_ ::
 
@@ -323,7 +323,7 @@ Clone a volume
 
 You can clone a volume as a new volume. The current volume will be cloned
 as a new volume name given as parameter. Please take care of stopping the
-container before clonning a volume::
+container before cloning a volume::
 
     buttervolume clone <volume> <new_volume>
 
@@ -379,7 +379,7 @@ Synchronize a volume from another host volume
 
 You can receive data from a remote volume, so in case there is a volume on
 the remote host with the **same name**, it will get new and most recent data
-from the distantant volume and replace in the local volume. Before running the
+from the distant volume and replace in the local volume. Before running the
 ``rsync`` command a snapshot is made on the locale machine to manage recovery::
 
     buttervolume sync <volume> <host1> [<host2>][...]
