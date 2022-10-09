@@ -6,12 +6,35 @@
 BTRFS Volume plugin for Docker
 ==============================
 
-This package provides a Docker volume plugin that creates a BTRFS subvolume for
-each container volume.
+What will Buttervolume allow you to do?
+---------------------------------------
 
-Please note this is **not** a BTRFS storage driver for Docker, but a plugin to
-manage volumes. It means you can use any storage driver, such as AUFS, this is
-an independant topic.
+- Quickly recover recent data after an exploit or failure of your web sites or applications
+- Quickly rollback your data to a previous version after a failed upgrade
+- Implement automatic upgrade of your applications without fear
+- Keep an history of your data
+- Make many backups without consuming more disk space than needed
+- Build a resilient hosting cluster with data replication
+- Quickly move your applications between nodes
+- Create preconfigured or templated applications to deploy in seconds
+
+What can Buttervolume do?
+-------------------------
+
+- Snapshot your Docker volumes
+- Restore a snapshot to its original volume or under a new volume
+- List and remove existing snapshots of your volumes
+- Clone your Docker volumes
+- Replicate or Sync your volumes to another host
+- Schedule periodic snapshots, sync or replication of your volumes
+- Schedule periodic removal of your old snapshots
+
+How does it work?
+-----------------
+
+Buttervolume is a Docker Volume Plugin that sits on top of a BTRFS partition
+and can manage and replicate BTRFS snapshots of your Docker volumes.
+
 
 .. contents::
 
