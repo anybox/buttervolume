@@ -329,7 +329,10 @@ def run(args):
     print("Starting scheduler job every {}s".format(TIMER))
     CURRENTTIMER = Timer(1, scheduler)
     CURRENTTIMER.start()
+    signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGHUP, shutdown)
+    signal.signal(signal.SIGQUIT, shutdown)
     # listen to requests
     print("Listening to requests on %s..." % SOCKET)
     serve(app, unix_socket=SOCKET, unix_socket_perms="660")
