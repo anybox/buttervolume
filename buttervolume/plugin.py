@@ -76,7 +76,7 @@ def plugin_activate(req):
 @add_debug_log
 def volume_create(req):
     name = req["Name"]
-    opts = req["Opts"]
+    opts = req.get("Opts", {})
 
     if "@" in name:
         return {"Err": '"@" is illegal in a volume name'}
@@ -85,20 +85,14 @@ def volume_create(req):
     if name in [v["Name"] for v in list_volumes()["Volumes"]]:
         return {"Err": ""}
 
-    try:
-        option_copyonwrite = opts["copyonwrite"].lower()
-        if option_copyonwrite not in ["true", "false"]:
-            return {
-                "Err": f'Invalid option for copyonwrite: {option_copyonwrite}. Set to "true" or "false".'
-            }
-        option_copyonwrite = option_copyonwrite == "true"
-
-    except KeyError:
-        # use copy-on-write by default
-        option_copyonwrite = True
+    cow = opts.get("copyonwrite", "true").lower()
+    if cow not in ["true", "false"]:
+        return {
+            "Err": f'Invalid option for copyonwrite: {cow}. Set to "true" or "false".'
+        }
 
     try:
-        btrfs.Subvolume(volpath).create(cow=option_copyonwrite)
+        btrfs.Subvolume(volpath).create(cow=cow == "true")
     except CalledProcessError as e:
         return {"Err": e.stderr.decode()}
     except OSError as e:
@@ -267,7 +261,7 @@ def snapshot_send(req):
         log.info(cmd.format(**locals()))
         run(cmd.format(**locals()), shell=True, check=True, stdout=PIPE, stderr=PIPE)
     except CalledProcessError as e:
-        log.warn(
+        log.warning(
             "Failed using parent %s. Sending full snapshot %s "
             "(stdout: %s, stderr: %s)",
             latest,

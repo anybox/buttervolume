@@ -224,7 +224,7 @@ def scheduler(config=SCHEDULE, test=False):
     log.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
-        log.warn("No config file %s", config)
+        log.warning("No config file %s", config)
         if not test:
             CURRENTTIMER = Timer(TIMER, scheduler)
             CURRENTTIMER.start()
@@ -243,7 +243,7 @@ def scheduler(config=SCHEDULE, test=False):
                 if now < last + timedelta(minutes=int(timer)):
                     continue
                 if action not in SCHEDULE_LOG.keys():
-                    log.warn("Skipping invalid action %s", action)
+                    log.warning("Skipping invalid action %s", action)
                     continue
                 # choose and run the right action
                 if action == "snapshot":
@@ -331,14 +331,14 @@ def run(args):
     CURRENTTIMER.start()
     signal.signal(signal.SIGTERM, shutdown)
     # listen to requests
-    print("Listening to requests...")
+    print("Listening to requests on %s..." % SOCKET)
     serve(app, unix_socket=SOCKET, unix_socket_perms="660")
 
 
 def main():
     parser = argparse.ArgumentParser(
         prog="buttervolume",
-        description="Command-line client for the docker btrfs volume plugin",
+        description="Command-line client for the BTRFS Docker Volume Plugin",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     subparsers = parser.add_subparsers(help="sub-commands")
