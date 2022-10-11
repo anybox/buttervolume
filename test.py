@@ -614,8 +614,6 @@ class TestCase(unittest.TestCase):
                     }
                 ),
             )
-            # TODO: understand why we must sleep
-            time.sleep(1)
             with open(join(path, "foobar")) as x:
                 self.assertEqual(x.read(), "test sync")
             # change it after localy and sync again
@@ -631,8 +629,6 @@ class TestCase(unittest.TestCase):
                     }
                 ),
             )
-            # TODO: understand why we must sleep
-            time.sleep(1)
             with open(join(path, "foobar")) as x:
                 self.assertEqual(x.read(), "test sync")
 
