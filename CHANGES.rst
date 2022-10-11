@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-3.9 (unreleased)
+3.9 (2022-10-11)
 ****************
 
 - Fixed a crash when option_copyonwrite is not set
