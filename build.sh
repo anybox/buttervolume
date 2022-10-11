@@ -5,9 +5,14 @@ set -e
 VERSION=$1
 if [ "$VERSION" == "" ]; then
     VERSION="HEAD"
+    echo "#####################"
     echo "Building version HEAD. You can build another version with: ./rebuild.sh <VERSION>"
+    echo "Please not that only locally commited changes will be built"
+    echo "#####################"
 else
+    echo "#####################"
     echo "Building version $VERSION"
+    echo "#####################"
 fi
 
 # First remove the plugin
@@ -20,16 +25,13 @@ if [ "`docker plugin ls | grep anybox/buttervolume:$VERSION | wc -l`" == "1" ]; 
 fi
 
 pushd $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) > /dev/null
-cd ..
 
 echo "Creating an archive for the intended version"
 rm -f buttervolume.zip
 git archive -o buttervolume.zip $VERSION
-mv buttervolume.zip docker/
 
 echo "Building an image with this version..."
-cd docker
-docker build --build-arg VERSION=$VERSION -t rootfs . --no-cache
+docker build -t rootfs . --no-cache
 
 echo "Exporting the image to a rootfs dir and cleanup the image..."
 rm -rf rootfs
@@ -46,4 +48,5 @@ echo "Succeeded!"
 popd > /dev/null
 
 echo
-echo "Now you can enable the plugin with: docker plugin enable anybox/buttervolume:$VERSION"
+echo "Now you can enable the plugin with:"
+echo "docker plugin enable anybox/buttervolume:$VERSION"

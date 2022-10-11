@@ -199,7 +199,6 @@ def volume_sync(req):
                     "-z",
                     "-h",
                     "-P",
-                    "--update",
                     "-e",
                     "ssh -p {}".format(port),
                     "{}:{}/".format(remote_host, remote_volume_path),
@@ -342,9 +341,7 @@ def snapshot_delete(req):
 @route("/VolumeDriver.Schedule", ["POST"])
 @add_debug_log
 def schedule(req):
-    """Schedule or unschedule a job
-    TODO add a lock
-    """
+    """Schedule or unschedule a job"""
     name = req["Name"]
     timer = req["Timer"]
     action = req["Action"]

@@ -18,14 +18,11 @@ RUN set -x; \
     && mkdir -p /var/lib/buttervolume/snapshots \
     && mkdir /etc/buttervolume /root/.ssh
 
-ARG VERSION
 COPY buttervolume.zip /
-RUN mkdir buttervolume \
-    && unzip -d buttervolume buttervolume.zip \
-    && cd buttervolume \
-    && python3 setup.py install \
-    && cd .. \
-    && rm -rf buttervolume
+RUN mkdir /usr/src/buttervolume \
+    && unzip -d /usr/src/buttervolume buttervolume.zip \
+    && cd /usr/src/buttervolume \
+    && python3 setup.py install
 
 # add tini to avoid sshd zombie processes
 ENV TINI_VERSION v0.19.0

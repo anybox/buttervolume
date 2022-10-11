@@ -16,11 +16,11 @@ if [ "$VERSION" == "" ]; then echo "Check version number"; exit 1; fi
 if [ "$VERSION" != "$CHANGES_VERSION" ]; then echo "Check version in VERSION and CHANGES.rst"; exit 1; fi
 if ! date --date=$LASTDATE "+%d-%B-%Y" > /dev/null; then echo "Check the last date in the CHANGES.rst"; exit 1; fi
 echo "OK"
-echo "(Release Check List)"
+echo "##################"
+echo "Release Check List"
+echo "##################"
 echo "- check the changelog"
 echo "- git tag"
-echo "- start from a clean git clone"
-echo "- disable and rm the plugin"
-echo "- build the plugin (as latest and version)"
-echo "- push it to the docker hub (as latest and version)"
+echo "- build.sh"
+echo "- docker push (as :latest and :<tag>)"
 echo "- publish to PyPI (python setup.py ...)"

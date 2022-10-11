@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.9 (unreleased)
+****************
+
+- Fixed a crash when option_copyonwrite is not set
+- Restored the test suite
+- Improved and simplified the build script and test script
+
 3.8 (2022-10-07)
 ****************
 

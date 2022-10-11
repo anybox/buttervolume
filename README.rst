@@ -59,12 +59,11 @@ If you want to be a contributor, read this chapter. Otherwise jump to the next s
 You first need to create a root filesystem for the plugin, using the provided Dockerfile::
 
     git clone https://github.com/anybox/buttervolume
-    cd buttervolume/docker
-    ./rebuild_rootfs.sh
+    ./build.sh
 
-Then you can create the plugin::
+By default the plugin is built for the latest commit (HEAD). You can build another version by specifying it like this::
 
-    docker plugin create anybox/buttervolume .
+    ./build.sh 3.7
 
 At this point, you can set the SSH_PORT option for the plugin by running::
 
@@ -75,7 +74,7 @@ Note that this option is only relevant if you use the replication feature betwee
 Now you can enable the plugin, which should start buttervolume in the plugin
 container::
 
-    docker plugin enable anybox/buttervolume
+    docker plugin enable anybox/buttervolume:HEAD
 
 You can check it is responding by running a buttervolume command::
 
@@ -504,7 +503,7 @@ which is convenient to remove an existing schedule or add a similar one.
 Copy-on-write
 -------------
 
-Copy-On-Write is enabled by default. You can disable it if you want.
+Copy-On-Write is enabled by default. You can disable it if you really want.
 
 Why disabling copy-on-write? If your docker volume stores databases such as
 PostgreSQL or MariaDB, the copy-on-write feature may hurt performance, though
@@ -512,23 +511,17 @@ the latest kernels have improve a lot. The good news is that disabling
 copy-on-write does not prevent from doing snaphots.
 
 
-Test
-****
+Testing
+*******
 
 If your volumes directory is a BTRFS partition or volume, tests can be run
 with::
 
-    sudo SSH_PORT=22 python3 setup.py test
+    ./test.sh
 
-22 being the port of your running ssh server with authorized key,
-or using and testing the docker image (with python >= 3.5)::
 
-    docker build -t anybox/buttervolume docker/
-    sudo docker run -it --rm --privileged \
-      -v /var/lib/docker:/var/lib/docker \
-      -v "$PWD":/usr/src/buttervolume \
-      -w /usr/src/buttervolume \
-      anybox/buttervolume test
+Working without a BTRFS partition
+*********************************
 
 If you have no BTRFS partitions or volumes you can setup a virtual partition
 in a file as follows (tested on Debian 8):

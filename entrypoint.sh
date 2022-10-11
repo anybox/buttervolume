@@ -15,8 +15,9 @@ if [[ $1 == 'test' ]]; then
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
     ssh-keyscan -p $SSH_PORT localhost >> /root/.ssh/known_hosts
-
+    cd /usr/src/buttervolume
+    mkdir -p /var/lib/buttervolume/received
     exec python3 setup.py $@
 else
-    /tini -- buttervolume $@
+    /tini -s -- buttervolume $@
 fi
