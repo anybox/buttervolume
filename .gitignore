@@ -6,3 +6,5 @@ sandbox*
 .eggs/
 docker/rootfs/
 venv/
+buttervolume.zip
+rootfs
