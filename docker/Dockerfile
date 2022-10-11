@@ -18,11 +18,10 @@ RUN set -x; \
     && mkdir -p /var/lib/buttervolume/snapshots \
     && mkdir /etc/buttervolume /root/.ssh
 
-ENV VERSION master
-RUN curl -o buttervolume.zip -SL https://github.com/anybox/buttervolume/archive/${VERSION}.zip \
-    && unzip buttervolume.zip \
-    && rm buttervolume.zip \
-    && mv buttervolume-${VERSION} buttervolume \
+ARG VERSION
+COPY buttervolume.zip /
+RUN mkdir buttervolume \
+    && unzip -d buttervolume buttervolume.zip \
     && cd buttervolume \
     && python3 setup.py install \
     && cd .. \
