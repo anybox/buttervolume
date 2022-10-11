@@ -6,8 +6,7 @@
 BTRFS Volume plugin for Docker
 ==============================
 
-What will Buttervolume allow you to do?
----------------------------------------
+**What will Buttervolume allow you to do?**
 
 - Quickly recover recent data after an exploit or failure of your web sites or applications
 - Quickly rollback your data to a previous version after a failed upgrade
@@ -18,8 +17,7 @@ What will Buttervolume allow you to do?
 - Quickly move your applications between nodes
 - Create preconfigured or templated applications to deploy in seconds
 
-What can Buttervolume do?
--------------------------
+**What can Buttervolume do?**
 
 - Snapshot your Docker volumes
 - Restore a snapshot to its original volume or under a new volume
@@ -29,8 +27,7 @@ What can Buttervolume do?
 - Schedule periodic snapshots, sync or replication of your volumes
 - Schedule periodic removal of your old snapshots
 
-How does it work?
------------------
+**How does it work?**
 
 Buttervolume is a Docker Volume Plugin that sits on top of a BTRFS partition
 and can manage and replicate BTRFS snapshots of your Docker volumes.
