@@ -374,6 +374,24 @@ def schedule_list(_):
     return {"Err": "", "Schedule": schedule}
 
 
+@route("/VolumeDriver.Schedule.Disable", ["GET"])
+@add_debug_log
+def schedule_disable(_):
+    """Disable scheduled jobs"""
+    if os.path.exists(SCHEDULE):
+        os.rename(SCHEDULE, f"{SCHEDULE}.disabled")
+    return {"Err": ""}
+
+
+@route("/VolumeDriver.Schedule.Enable", ["GET"])
+@add_debug_log
+def schedule_enable(_):
+    """Enable scheduled jobs"""
+    if os.path.exists(f"{SCHEDULE}.disabled"):
+        os.rename(f"{SCHEDULE}.disabled", SCHEDULE)
+    return {"Err": ""}
+
+
 @route("/VolumeDriver.Snapshot.Restore", ["POST"])
 @add_debug_log
 def snapshot_restore(req):

@@ -223,7 +223,10 @@ def scheduler(config=SCHEDULE, test=False):
     log.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
-        log.warning("No config file %s", config)
+        if os.path.exists(f"{config}.disabled"):
+            log.warning("Config file disabled: %s", config)
+        else:
+            log.warning("No config file %s", config)
         if not test:
             CURRENTTIMER.start()
         return
@@ -362,7 +365,7 @@ def main():
 
     parser_schedule = subparsers.add_parser(
         "schedule",
-        help="(un)Schedule a snapshot, replication, " "synchronization or purge",
+        help="Schedule or unschedule a snapshot, replication, synchronization or purge",
     )
     parser_schedule.add_argument(
         "action",
