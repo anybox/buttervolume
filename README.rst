@@ -103,6 +103,15 @@ You can check it is responding by running a buttervolume command::
     alias buttervolume="drunc exec -t $(drunc list|tail -n+2|awk '{print $1}') buttervolume"
     sudo buttervolume scheduled
 
+Increase the log level by writing a `/var/lib/buttervolume/config/config.ini` file with::
+
+    [DEFAULT]
+    TIMER = 120
+
+Then check the logs with::
+
+    sudo journalctl -f -u docker.service
+
 You can also locally install and run the plugin in the foreground with::
 
     python3 -m venv venv
