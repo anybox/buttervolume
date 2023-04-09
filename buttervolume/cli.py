@@ -6,7 +6,7 @@ import os
 import requests_unixsocket
 import signal
 import sys
-import urllib
+import urllib.parse
 from bottle import app
 from buttervolume.plugin import LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
 from buttervolume.plugin import SCHEDULE
@@ -23,7 +23,6 @@ VERSION = open(join(dirname(realpath(__file__)), "VERSION")).read().strip()
 logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
 app = app()
-CURRENTTIMER = None
 
 
 class Session(object):
@@ -98,7 +97,7 @@ def schedule(args):
     return res
 
 
-def scheduled(args):
+def scheduled(_):
     urlpath = "/VolumeDriver.Schedule.List"
     resp = Session().get(
         "http+unix://{}{}".format(urllib.parse.quote_plus(USOCKET), urlpath)
@@ -210,7 +209,7 @@ def purge(args, test=False):
 
 
 class Arg:
-    def __init__(self, *a, **kw):
+    def __init__(self, *_, **kw):
         for k, v in kw.items():
             setattr(self, k, v)
 
@@ -226,7 +225,6 @@ def scheduler(config=SCHEDULE, test=False):
     if not os.path.exists(config):
         log.warning("No config file %s", config)
         if not test:
-            CURRENTTIMER = Timer(TIMER, scheduler)
             CURRENTTIMER.start()
         return
     name = action = timer = ""
@@ -311,13 +309,16 @@ def scheduler(config=SCHEDULE, test=False):
         CURRENTTIMER.start()
 
 
-def shutdown(signum, frame):
+CURRENTTIMER = Timer(TIMER, scheduler)
+
+
+def shutdown(*_):
     global CURRENTTIMER
     CURRENTTIMER.cancel()
     sys.exit(0)
 
 
-def run(args):
+def run(_):
     global CURRENTTIMER
     if not os.path.exists(VOLUMES_PATH):
         log.info("Creating %s", VOLUMES_PATH)

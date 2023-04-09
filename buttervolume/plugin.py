@@ -68,7 +68,7 @@ def add_debug_log(handler):
 
 @route("/Plugin.Activate", ["POST"])
 @add_debug_log
-def plugin_activate(req):
+def plugin_activate(_):
     return {"Implements": ["VolumeDriver"]}
 
 
@@ -131,7 +131,7 @@ def volume_path(req):
 
 @route("/VolumeDriver.Unmount", ["POST"])
 @add_debug_log
-def volume_unmount(req):
+def volume_unmount(_):
     return {"Err": ""}
 
 
@@ -160,7 +160,7 @@ def volume_remove(req):
 
 @route("/VolumeDriver.List", ["POST"])
 @add_debug_log
-def volume_list(req):
+def volume_list(_):
     return list_volumes()
 
 
@@ -190,21 +190,21 @@ def volume_sync(req):
         remote_volume_path = join(remote_volumes, volume_name)
         for remote_host in remote_hosts:
             log.debug("Rsync volume: %s from host: %s", local_volume_path, remote_host)
+            cmd = [
+                "rsync",
+                "-v",
+                "-r",
+                "-a",
+                "-z",
+                "-h",
+                "-P",
+                "-e",
+                "ssh -p {}".format(port),
+                "{}:{}/".format(remote_host, remote_volume_path),
+                local_volume_path,
+            ]
+            log.debug("Running %r", cmd)
             try:
-                cmd = [
-                    "rsync",
-                    "-v",
-                    "-r",
-                    "-a",
-                    "-z",
-                    "-h",
-                    "-P",
-                    "-e",
-                    "ssh -p {}".format(port),
-                    "{}:{}/".format(remote_host, remote_volume_path),
-                    local_volume_path,
-                ]
-                log.debug("Running %r", cmd)
                 run(cmd, check=True, stdout=PIPE, stderr=PIPE)
             except Exception as ex:
                 err = getattr(ex, "stderr", ex)
@@ -219,7 +219,7 @@ def volume_sync(req):
 
 @route("/VolumeDriver.Capabilities", ["POST"])
 @add_debug_log
-def driver_cap(req):
+def driver_cap(_):
     """butter volumes are local to the active node.
     They only exist as snapshots on the remote nodes.
     """
@@ -253,8 +253,8 @@ def snapshot_send(req):
     # needed by a current issue with send
     run('btrfs filesystem sync "{}"'.format(SNAPSHOTS_PATH), shell=True)
     cmd = (
-        'btrfs send {parent} "{snapshot_path}"'
-        ' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"'
+        f'btrfs send {parent} "{snapshot_path}"'
+        f' | ssh -p {port} {remote_host} "btrfs receive {remote_snapshots}"'
     )
     try:
         log.info(cmd.format(**locals()))
@@ -364,7 +364,7 @@ def schedule(req):
 
 @route("/VolumeDriver.Schedule.List", ["GET"])
 @add_debug_log
-def schedule_list(req):
+def schedule_list(_):
     """List scheduled jobs"""
     schedule = []
     if os.path.exists(SCHEDULE):
@@ -462,7 +462,7 @@ def snapshots_purge(req):
             else:
                 btrfs.Subvolume(join(SNAPSHOTS_PATH, snapshot)).delete()
                 log.info("Deleted snapshot {}".format(snapshot))
-    except Exception as e:
+    except OSError as e:
         log.error("Error purging snapshots: %s", e.strerror)
         return {"Err": e.strerror}
     return {"Err": ""}
@@ -497,7 +497,7 @@ def compute_purges(snapshots, pattern, now):
     # pattern = 3600:180:60
     # age segments = [(3600, 180), (180, 60)]
     for age_segment in [
-        (pattern[i], pattern[i + 1]) for i, p in enumerate(pattern[:-1])
+        (pattern[i], pattern[i + 1]) for i, _ in enumerate(pattern[:-1])
     ]:
         last_timeframe = -1
         for i, age in enumerate(snapshots_age):
