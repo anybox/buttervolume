@@ -30,7 +30,7 @@ setup(
     },
     install_requires=[
         "bottle",
-        "urllib3",
+        "urllib3<1.27,>=1.21.1",
         "requests-unixsocket",
         "waitress",
         "webtest",
