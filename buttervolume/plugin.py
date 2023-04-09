@@ -76,7 +76,7 @@ def plugin_activate(_):
 @add_debug_log
 def volume_create(req):
     name = req["Name"]
-    opts = req.get("Opts", {})
+    opts = req.get("Opts", {}) or {}
 
     if "@" in name:
         return {"Err": '"@" is illegal in a volume name'}
