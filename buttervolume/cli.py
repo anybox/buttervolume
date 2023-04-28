@@ -1,12 +1,3 @@
-import argparse
-import csv
-import json
-import logging
-import os
-import requests_unixsocket
-import signal
-import sys
-import urllib.parse
 from bottle import app
 from buttervolume.plugin import LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
 from buttervolume.plugin import SCHEDULE
@@ -15,9 +6,19 @@ from datetime import datetime, timedelta
 from os.path import dirname, join, realpath
 from requests.exceptions import ConnectionError
 from subprocess import CalledProcessError
-from threading import Timer
 from waitress import serve
 from webtest import TestApp
+import argparse
+import csv
+import json
+import logging
+import os
+import requests_unixsocket
+import signal
+import sys
+import threading
+import traceback
+import urllib.parse
 
 VERSION = open(join(dirname(realpath(__file__)), "VERSION")).read().strip()
 logging.basicConfig(level=LOGLEVEL)
@@ -214,129 +215,144 @@ class Arg:
             setattr(self, k, v)
 
 
-def scheduler(config=SCHEDULE, test=False):
-    """Read the scheduler config and apply it, then scheduler again.
+def scheduler(event, config=SCHEDULE, test=False, timer=TIMER):
+    """Read the scheduler config and apply it, then run scheduler again.
     WARNING: this should be guaranteed against runtime errors
     otherwise the next scheduler won't run
     """
-    global CURRENTTIMER
-    log.info("New scheduler job at %s", datetime.now())
-    # open the config and launch the tasks
-    if not os.path.exists(config):
-        if os.path.exists(f"{config}.disabled"):
-            log.warning("Config file disabled: %s", config)
-        else:
-            log.warning("No config file %s", config)
-        if not test:
-            CURRENTTIMER.start()
-        return
-    name = action = timer = ""
-    # run each action in the schedule if time is elapsed since the last one
-    with open(config) as f:
-        for line in csv.reader(f):
-            try:
-                name, action, timer = line
-                now = datetime.now()
-                # just starting, we consider beeing late on snapshots
-                SCHEDULE_LOG.setdefault(action, {})
-                SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
-                last = SCHEDULE_LOG[action][name]
-                if now < last + timedelta(minutes=int(timer)):
-                    continue
-                if action not in SCHEDULE_LOG.keys():
-                    log.warning("Skipping invalid action %s", action)
-                    continue
-                # choose and run the right action
-                if action == "snapshot":
-                    log.info("Starting scheduled snapshot of %s", name)
-                    snap = snapshot(Arg(name=[name]), test=test)
-                    if not snap:
-                        log.info("Could not snapshot %s", name)
+
+    def runjobs():
+        log.info("New scheduler job at %s", datetime.now())
+        # open the config and launch the tasks
+        if not os.path.exists(config):
+            if os.path.exists(f"{config}.disabled"):
+                log.warning("Config file disabled: %s", config)
+            else:
+                log.warning("No config file %s", config)
+            return
+        name = action = timer = ""
+        # run each action in the schedule if time is elapsed since the last one
+        with open(config) as f:
+            for line in csv.reader(f):
+                try:
+                    name, action, timer = line
+                    now = datetime.now()
+                    # just starting, we consider beeing late on snapshots
+                    SCHEDULE_LOG.setdefault(action, {})
+                    SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
+                    last = SCHEDULE_LOG[action][name]
+                    if now < last + timedelta(minutes=int(timer)):
                         continue
-                    log.info("Successfully snapshotted to %s", snap)
-                    SCHEDULE_LOG[action][name] = now
-                if action.startswith("replicate:"):
-                    _, host = action.split(":")
-                    log.info("Starting scheduled replication of %s", name)
-                    snap = snapshot(Arg(name=[name]), test=test)
-                    if not snap:
-                        log.info("Could not snapshot %s", name)
+                    if action not in SCHEDULE_LOG.keys():
+                        log.warning("Skipping invalid action %s", action)
                         continue
-                    log.info("Successfully snapshotted to %s", snap)
-                    send(Arg(snapshot=[snap], host=[host]), test=test)
-                    log.info("Successfully replicated %s to %s", name, snap)
-                    SCHEDULE_LOG[action][name] = now
-                if action.startswith("purge:"):
-                    _, pattern = action.split(":", 1)
-                    log.info(
-                        "Starting scheduled purge of %s with pattern %s", name, pattern
+                    # choose and run the right action
+                    if action == "snapshot":
+                        log.info("Starting scheduled snapshot of %s", name)
+                        snap = snapshot(Arg(name=[name]), test=test)
+                        if not snap:
+                            log.info("Could not snapshot %s", name)
+                            continue
+                        log.info("Successfully snapshotted to %s", snap)
+                        SCHEDULE_LOG[action][name] = now
+                    if action.startswith("replicate:"):
+                        _, host = action.split(":")
+                        log.info("Starting scheduled replication of %s", name)
+                        snap = snapshot(Arg(name=[name]), test=test)
+                        if not snap:
+                            log.info("Could not snapshot %s", name)
+                            continue
+                        log.info("Successfully snapshotted to %s", snap)
+                        send(Arg(snapshot=[snap], host=[host]), test=test)
+                        log.info("Successfully replicated %s to %s", name, snap)
+                        SCHEDULE_LOG[action][name] = now
+                    if action.startswith("purge:"):
+                        _, pattern = action.split(":", 1)
+                        log.info(
+                            "Starting scheduled purge of %s with pattern %s",
+                            name,
+                            pattern,
+                        )
+                        purge(
+                            Arg(name=[name], pattern=[pattern], dryrun=False), test=test
+                        )
+                        log.info("Finished purging")
+                        SCHEDULE_LOG[action][name] = now
+                    if action.startswith("synchronize:"):
+                        log.info("Starting scheduled synchronization of %s", name)
+                        hosts = action.split(":")[1].split(",")
+                        # do a snapshot to save state before pulling data
+                        snap = snapshot(Arg(name=[name]), test=test)
+                        log.debug("Successfully snapshotted to %s", snap)
+                        sync(Arg(volumes=[name], hosts=hosts), test=test)
+                        log.debug("End of %s synchronization from %s", name, hosts)
+                        SCHEDULE_LOG[action][name] = now
+                except CalledProcessError as e:
+                    log.error(
+                        "Error processing scheduler action file %s "
+                        "name=%s, action=%s, timer=%s, "
+                        "exception=%s, stdout=%s, stderr=%s",
+                        config,
+                        name,
+                        action,
+                        timer,
+                        str(e),
+                        e.stdout,
+                        e.stderr,
                     )
-                    purge(Arg(name=[name], pattern=[pattern], dryrun=False), test=test)
-                    log.info("Finished purging")
-                    SCHEDULE_LOG[action][name] = now
-                if action.startswith("synchronize:"):
-                    log.info("Starting scheduled synchronization of %s", name)
-                    hosts = action.split(":")[1].split(",")
-                    # do a snapshot to save state before pulling data
-                    snap = snapshot(Arg(name=[name]), test=test)
-                    log.debug("Successfully snapshotted to %s", snap)
-                    sync(Arg(volumes=[name], hosts=hosts), test=test)
-                    log.debug("End of %s synchronization from %s", name, hosts)
-                    SCHEDULE_LOG[action][name] = now
-            except CalledProcessError as e:
-                log.error(
-                    "Error processing scheduler action file %s "
-                    "name=%s, action=%s, timer=%s, "
-                    "exception=%s, stdout=%s, stderr=%s",
-                    config,
-                    name,
-                    action,
-                    timer,
-                    str(e),
-                    e.stdout,
-                    e.stderr,
-                )
-            except Exception as e:
-                log.error(
-                    "Error processing scheduler action file %s "
-                    "name=%s, action=%s, timer=%s\n%s",
-                    config,
-                    name,
-                    action,
-                    timer,
-                    str(e),
-                )
-    # schedule the next run
-    if not test:  # run only once
-        CURRENTTIMER = Timer(TIMER, scheduler)
-        CURRENTTIMER.start()
+                except Exception as e:
+                    log.error(
+                        "Error processing scheduler action file %s "
+                        "name=%s, action=%s, timer=%s\n%s",
+                        config,
+                        name,
+                        action,
+                        timer,
+                        str(e),
+                    )
+
+    while not test and not event.is_set():
+        log.info(
+            f"Starting the scheduler thread. Next jobs will run in {timer} seconds"
+        )
+        if event.wait(timeout=float(timer)):
+            log.info("Terminating the scheduler thread")
+            return
+        else:
+            try:
+                runjobs()
+            except:
+                log.critical("An exception occured in the scheduling job")
+                log.critical(traceback.format_exc())
 
 
-CURRENTTIMER = Timer(TIMER, scheduler)
+def shutdown(thread, event):
+    event.set()
+    thread.join()
+    sys.exit(1)
 
 
-def shutdown(*_):
-    global CURRENTTIMER
-    CURRENTTIMER.cancel()
-    sys.exit(0)
-
-
-def run(_):
-    global CURRENTTIMER
+def run(_, test=False):
     if not os.path.exists(VOLUMES_PATH):
         log.info("Creating %s", VOLUMES_PATH)
         os.makedirs(VOLUMES_PATH, exist_ok=True)
     if not os.path.exists(SNAPSHOTS_PATH):
         log.info("Creating %s", SNAPSHOTS_PATH)
         os.makedirs(SNAPSHOTS_PATH, exist_ok=True)
-    # run a thread for the scheduled snapshots
+
+    # run a thread for the scheduled jobs
     print("Starting scheduler job every {}s".format(TIMER))
-    CURRENTTIMER = Timer(1, scheduler)
-    CURRENTTIMER.start()
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGHUP, shutdown)
-    signal.signal(signal.SIGQUIT, shutdown)
+    event = threading.Event()
+    thread = threading.Thread(
+        target=scheduler,
+        args=(event,),
+        kwargs={"config": SCHEDULE, "test": test, "timer": TIMER},
+    )
+    thread.start()
+    signal.signal(signal.SIGINT, lambda *_: shutdown(thread, event))
+    signal.signal(signal.SIGTERM, lambda *_: shutdown(thread, event))
+    signal.signal(signal.SIGHUP, lambda *_: shutdown(thread, event))
+    signal.signal(signal.SIGQUIT, lambda *_: shutdown(thread, event))
     # listen to requests
     print("Listening to requests on %s..." % SOCKET)
     serve(app, unix_socket=SOCKET, unix_socket_perms="660")
