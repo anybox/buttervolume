@@ -27,6 +27,7 @@ TEST_REMOTE_PATH = getconfig(
     config, "TEST_REMOTE_PATH", "/var/lib/buttervolume/received/"
 )
 SCHEDULE = getconfig(config, "SCHEDULE", "/etc/buttervolume/schedule.csv")
+FIELDS = ["Name", "Action", "Timer", "Active"]
 DRIVERNAME = getconfig(config, "DRIVERNAME", "anybox/buttervolume:latest")
 RUNPATH = getconfig(config, "RUNPATH", "/run/docker")
 SOCKET = getconfig(config, "SOCKET", os.path.join(RUNPATH, "plugins", "btrfs.sock"))
@@ -345,20 +346,31 @@ def schedule(req):
     name = req["Name"]
     timer = req["Timer"]
     action = req["Action"]
-    schedule = []
-    if timer:  # 0 means unschedule!
-        schedule.append((name, action, timer))
-    if os.path.exists(SCHEDULE):
-        with open(SCHEDULE) as f:
-            for n, a, t in csv.reader(f):
-                # skip the line we want to write
-                if n == name and a == action:
-                    continue
-                schedule.append((n, a, t))
-    os.makedirs(dirname(SCHEDULE), exist_ok=True)
-    with open(SCHEDULE, "w") as f:
+    if not os.path.exists(SCHEDULE):
+        os.makedirs(dirname(SCHEDULE), exist_ok=True)
+        with open(SCHEDULE, "w") as f:
+            f.write("")
+    with open(SCHEDULE) as f:
+        schedule = list(csv.DictReader(f, fieldnames=FIELDS))
+        newschedule = []
         for line in schedule:
-            csv.writer(f).writerow(line)
+            if line["Name"] == name and line["Action"] == action:
+                if timer in ("0", "delete"):
+                    continue
+                if timer == "pause":
+                    line["Active"] = True
+                if timer == "resume":
+                    line["Active"] = False
+                newschedule.append(line)
+                break
+        else:
+            if timer.isnumeric() and timer not in ("0", "delete"):
+                newschedule.append(
+                    {"Name": name, "Timer": timer, "Action": action, "Active": True}
+                )
+
+    with open(SCHEDULE, "w") as f:
+        csv.DictWriter(f, fieldnames=FIELDS).writerows(newschedule)
     return {"Err": ""}
 
 
@@ -369,8 +381,7 @@ def schedule_list(_):
     schedule = []
     if os.path.exists(SCHEDULE):
         with open(SCHEDULE) as f:
-            for n, a, t in csv.reader(f):
-                schedule.append({"Name": n, "Timer": t, "Action": a})
+            schedule = list(csv.DictReader(f, fieldnames=FIELDS))
     return {"Err": "", "Schedule": schedule}
 
 

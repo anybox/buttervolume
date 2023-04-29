@@ -1,5 +1,5 @@
 from bottle import app
-from buttervolume.plugin import LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
+from buttervolume.plugin import FIELDS, LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
 from buttervolume.plugin import SCHEDULE
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
@@ -215,112 +215,109 @@ class Arg:
             setattr(self, k, v)
 
 
+def runjobs(config=SCHEDULE, test=False, timer=TIMER):
+    log.info("New scheduler job at %s", datetime.now())
+    # open the config and launch the tasks
+    if not os.path.exists(config):
+        if os.path.exists(f"{config}.disabled"):
+            log.warning("Config file disabled: %s", config)
+        else:
+            log.warning("No config file %s", config)
+        return
+    name = action = timer = ""
+    # run each action in the schedule if time is elapsed since the last one
+    with open(config) as f:
+        for line in csv.DictReader(f, fieldnames=FIELDS):
+            try:
+                name, action, timer, enabled = line.values()
+                enabled = False if enabled == "False" else True
+                if not enabled:
+                    log.info(f"{action} of {name} is disabled")
+                    continue
+                now = datetime.now()
+                # just starting, we consider beeing late on snapshots
+                SCHEDULE_LOG.setdefault(action, {})
+                SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
+                last = SCHEDULE_LOG[action][name]
+                if now < last + timedelta(minutes=int(timer)):
+                    continue
+                if action not in SCHEDULE_LOG.keys():
+                    log.warning("Skipping invalid action %s", action)
+                    continue
+                # choose and run the right action
+                if action == "snapshot":
+                    log.info("Starting scheduled snapshot of %s", name)
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    if not snap:
+                        log.info("Could not snapshot %s", name)
+                        continue
+                    log.info("Successfully snapshotted to %s", snap)
+                    SCHEDULE_LOG[action][name] = now
+                if action.startswith("replicate:"):
+                    _, host = action.split(":")
+                    log.info("Starting scheduled replication of %s", name)
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    if not snap:
+                        log.info("Could not snapshot %s", name)
+                        continue
+                    log.info("Successfully snapshotted to %s", snap)
+                    send(Arg(snapshot=[snap], host=[host]), test=test)
+                    log.info("Successfully replicated %s to %s", name, snap)
+                    SCHEDULE_LOG[action][name] = now
+                if action.startswith("purge:"):
+                    _, pattern = action.split(":", 1)
+                    log.info(
+                        "Starting scheduled purge of %s with pattern %s",
+                        name,
+                        pattern,
+                    )
+                    purge(Arg(name=[name], pattern=[pattern], dryrun=False), test=test)
+                    log.info("Finished purging")
+                    SCHEDULE_LOG[action][name] = now
+                if action.startswith("synchronize:"):
+                    log.info("Starting scheduled synchronization of %s", name)
+                    hosts = action.split(":")[1].split(",")
+                    # do a snapshot to save state before pulling data
+                    snap = snapshot(Arg(name=[name]), test=test)
+                    log.debug("Successfully snapshotted to %s", snap)
+                    sync(Arg(volumes=[name], hosts=hosts), test=test)
+                    log.debug("End of %s synchronization from %s", name, hosts)
+                    SCHEDULE_LOG[action][name] = now
+            except CalledProcessError as e:
+                log.error(
+                    "Error processing scheduler action file %s "
+                    "name=%s, action=%s, timer=%s, "
+                    "exception=%s, stdout=%s, stderr=%s",
+                    config,
+                    name,
+                    action,
+                    timer,
+                    str(e),
+                    e.stdout,
+                    e.stderr,
+                )
+            except Exception as e:
+                log.error(
+                    "Error processing scheduler action file %s "
+                    "name=%s, action=%s, timer=%s\n%s",
+                    config,
+                    name,
+                    action,
+                    timer,
+                    str(e),
+                )
+
+
 def scheduler(event, config=SCHEDULE, test=False, timer=TIMER):
-    """Read the scheduler config and apply it, then run scheduler again.
-    WARNING: this should be guaranteed against runtime errors
-    otherwise the next scheduler won't run
-    """
-
-    def runjobs():
-        log.info("New scheduler job at %s", datetime.now())
-        # open the config and launch the tasks
-        if not os.path.exists(config):
-            if os.path.exists(f"{config}.disabled"):
-                log.warning("Config file disabled: %s", config)
-            else:
-                log.warning("No config file %s", config)
-            return
-        name = action = timer = ""
-        # run each action in the schedule if time is elapsed since the last one
-        with open(config) as f:
-            for line in csv.reader(f):
-                try:
-                    name, action, timer = line
-                    now = datetime.now()
-                    # just starting, we consider beeing late on snapshots
-                    SCHEDULE_LOG.setdefault(action, {})
-                    SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
-                    last = SCHEDULE_LOG[action][name]
-                    if now < last + timedelta(minutes=int(timer)):
-                        continue
-                    if action not in SCHEDULE_LOG.keys():
-                        log.warning("Skipping invalid action %s", action)
-                        continue
-                    # choose and run the right action
-                    if action == "snapshot":
-                        log.info("Starting scheduled snapshot of %s", name)
-                        snap = snapshot(Arg(name=[name]), test=test)
-                        if not snap:
-                            log.info("Could not snapshot %s", name)
-                            continue
-                        log.info("Successfully snapshotted to %s", snap)
-                        SCHEDULE_LOG[action][name] = now
-                    if action.startswith("replicate:"):
-                        _, host = action.split(":")
-                        log.info("Starting scheduled replication of %s", name)
-                        snap = snapshot(Arg(name=[name]), test=test)
-                        if not snap:
-                            log.info("Could not snapshot %s", name)
-                            continue
-                        log.info("Successfully snapshotted to %s", snap)
-                        send(Arg(snapshot=[snap], host=[host]), test=test)
-                        log.info("Successfully replicated %s to %s", name, snap)
-                        SCHEDULE_LOG[action][name] = now
-                    if action.startswith("purge:"):
-                        _, pattern = action.split(":", 1)
-                        log.info(
-                            "Starting scheduled purge of %s with pattern %s",
-                            name,
-                            pattern,
-                        )
-                        purge(
-                            Arg(name=[name], pattern=[pattern], dryrun=False), test=test
-                        )
-                        log.info("Finished purging")
-                        SCHEDULE_LOG[action][name] = now
-                    if action.startswith("synchronize:"):
-                        log.info("Starting scheduled synchronization of %s", name)
-                        hosts = action.split(":")[1].split(",")
-                        # do a snapshot to save state before pulling data
-                        snap = snapshot(Arg(name=[name]), test=test)
-                        log.debug("Successfully snapshotted to %s", snap)
-                        sync(Arg(volumes=[name], hosts=hosts), test=test)
-                        log.debug("End of %s synchronization from %s", name, hosts)
-                        SCHEDULE_LOG[action][name] = now
-                except CalledProcessError as e:
-                    log.error(
-                        "Error processing scheduler action file %s "
-                        "name=%s, action=%s, timer=%s, "
-                        "exception=%s, stdout=%s, stderr=%s",
-                        config,
-                        name,
-                        action,
-                        timer,
-                        str(e),
-                        e.stdout,
-                        e.stderr,
-                    )
-                except Exception as e:
-                    log.error(
-                        "Error processing scheduler action file %s "
-                        "name=%s, action=%s, timer=%s\n%s",
-                        config,
-                        name,
-                        action,
-                        timer,
-                        str(e),
-                    )
-
+    """Read the scheduler config and apply it, then run scheduler again."""
+    log.info(f"Starting the scheduler thread. Next jobs will run in {timer} seconds")
     while not test and not event.is_set():
-        log.info(
-            f"Starting the scheduler thread. Next jobs will run in {timer} seconds"
-        )
         if event.wait(timeout=float(timer)):
             log.info("Terminating the scheduler thread")
             return
         else:
             try:
-                runjobs()
+                runjobs(config, test, timer)
             except:
                 log.critical("An exception occured in the scheduling job")
                 log.critical(traceback.format_exc())
@@ -365,7 +362,9 @@ def main():
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     subparsers = parser.add_subparsers(help="sub-commands")
-    parser_run = subparsers.add_parser("run", help="Run the plugin in foreground")
+    parser_run = subparsers.add_parser(
+        "run", help="Run the plugin in foreground (for development or debugging)"
+    )
 
     parser_snapshot = subparsers.add_parser("snapshot", help="Snapshot a volume")
     parser_snapshot.add_argument(
@@ -397,7 +396,6 @@ def main():
         "timer",
         metavar="timer",
         nargs=1,
-        type=int,
         help="Time span in minutes between two actions",
     )
     parser_schedule.add_argument(
