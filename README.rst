@@ -24,13 +24,14 @@ BTRFS Volume plugin for Docker
 - List and remove existing snapshots of your volumes
 - Clone your Docker volumes
 - Replicate or Sync your volumes to another host
-- Schedule periodic snapshots, sync or replication of your volumes
-- Schedule periodic removal of your old snapshots
+- Run periodic snapshots, sync or replication of your volumes
+- Remove your old snapshots periodically
+- Pause or resume the periodic jobs, either individually or globally
 
 **How does it work?**
 
-Buttervolume is a Docker Volume Plugin that sits on top of a BTRFS partition
-and can manage and replicate BTRFS snapshots of your Docker volumes.
+Buttervolume is a Docker Volume Plugin that stores each Docker volume as a
+BTRFS subvolume.
 
 
 .. contents::
@@ -174,7 +175,7 @@ You can configure the following variables:
     * ``SCHEDULE``: the path of the scheduler configuration
     * ``RUNPATH``: the path of the docker run directory (/run/docker)
     * ``SOCKET``: the path of the unix socket where buttervolume listens
-    * ``TIMER``: the number of seconds between two runs of the scheduler
+    * ``TIMER``: the number of seconds between two runs of the scheduler jobs
     * ``DTFORMAT``: the format of the datetime in the logs
     * ``LOGLEVEL``: the Python log level (INFO, DEBUG, etc.)
 
@@ -279,8 +280,8 @@ When buttervolume is installed, it provides a command line tool
     run                 Run the plugin in foreground
     snapshot            Snapshot a volume
     snapshots           List snapshots
-    schedule            (un)Schedule a snapshot, replication or purge
-    scheduled           List scheduled actions
+    schedule            Schedule, unschedule, pause or resume a periodic snapshot, replication, synchronization or purge
+    scheduled           List, pause or resume all the scheduled actions
     restore             Restore a snapshot (optionally to a different volume)
     clone               Clone a volume as new volume
     send                Send a snapshot to another host
@@ -457,15 +458,23 @@ Here are a few examples of retention patterns:
 Schedule a job
 --------------
 
-You can schedule a periodic job, such as a snapshot, a replication, a
-synchronization or a purge. The schedule it self is stored in
+You can schedule, pause or resume a periodic job, such as a snapshot, a
+replication, a synchronization or a purge. The schedule it self is stored in
 ``/etc/buttervolume/schedule.csv``.
 
 **Schedule a snapshot** of a volume every 60 minutes::
 
     buttervolume schedule snapshot 60 <volume>
 
-Remove the same schedule by specifying a timer of 0 min::
+Pause this schedule::
+
+  buttervolume schedule snapshot pause <volume>
+
+Resume this schedule::
+
+  buttervolume schedule snapshot resume <volume>
+
+Remove this schedule by specifying a timer of 0 min (or `delete`)::
 
     buttervolume schedule snapshot 0 <volume>
 
@@ -509,16 +518,31 @@ Remove the same schedule::
     buttervolume schedule synchronize:remote_host1,remote_host2 0 foovolume
 
 
-List scheduled jobs
--------------------
+List, pause or resume all scheduled jobs
+----------------------------------------
 
 You can list all the scheduled job with::
 
     buttervolume scheduled
 
+or::
+
+    buttervolume scheduled list
+
 It will display the schedule in the same format used for adding the schedule,
 which is convenient to remove an existing schedule or add a similar one.
 
+Pause all the scheduled jobs::
+
+  buttervolume scheduled pause
+
+Resume all the scheduled jobs::
+
+  buttervolume scheduled resume
+
+The global job pause/resume feature is implemented separately from the
+individual job pause/resume. So it will not affect your individual
+pause/resume settings.
 
 Copy-on-write
 -------------
