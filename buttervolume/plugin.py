@@ -360,17 +360,17 @@ def schedule(req):
             f.write("")
     with open(SCHEDULE) as f:
         schedule = {
-            f"{line['Name']}|{line['Action']}": line
+            (line["Name"], line["Action"]): line
             for line in csv.DictReader(f, fieldnames=FIELDS)
         }
-        if timer == "pause" and f"{name}|{action}" in schedule:
-            schedule[f"{name}|{action}"]["Active"] = False
-        elif timer == "resume" and f"{name}|{action}" in schedule:
-            schedule[f"{name}|{action}"]["Active"] = True
-        elif timer in ("0", "delete") and f"{name}|{action}" in schedule:
-            del schedule[f"{name}|{action}"]
+        if timer == "pause" and (name, action) in schedule:
+            schedule[(name, action)]["Active"] = False
+        elif timer == "resume" and (name, action) in schedule:
+            schedule[(name, action)]["Active"] = True
+        elif timer in ("0", "delete") and (name, action) in schedule:
+            del schedule[(name, action)]
         elif timer.isnumeric() and timer not in ("0", "delete"):
-            schedule[f"{name}|{action}"] = {
+            schedule[(name, action)] = {
                 "Name": name,
                 "Action": action,
                 "Timer": timer,
