@@ -232,12 +232,12 @@ class TestCase(unittest.TestCase):
         resp = self.app.post("/VolumeDriver.Snapshot", json.dumps({"Name": name2}))
         snap4 = json.loads(resp.body.decode())["Snapshot"]
         # list all the snapshots
-        resp = self.app.post("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         # check the list of snapshots
         self.assertEqual(set(snapshots), set([snap1, snap2, snap3, snap4]))
         # list all the snapshots of the second volume only
-        resp = self.app.post("/VolumeDriver.Snapshot.List", json.dumps({"Name": name2}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({"Name": name2}))
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         # check the list of snapshots
         self.assertEqual(set(snapshots), set([snap3, snap4]))
@@ -334,7 +334,7 @@ class TestCase(unittest.TestCase):
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 0)
         # check we have no snapshots
-        resp = self.app.post("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         self.assertEqual(len(snapshots), 0)
         # replicate the volume every 120 minutes
@@ -643,7 +643,7 @@ class TestCase(unittest.TestCase):
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 0)
         # check we have no snapshots
-        resp = self.app.post("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         self.assertEqual(len(snapshots), 0)
         # synchronize the volume every 120 minutes, even some host are not

@@ -315,7 +315,7 @@ def volume_snapshot(req):
     return {"Err": "", "Snapshot": timestamped}
 
 
-@route("/VolumeDriver.Snapshot.List", ["POST"])
+@route("/VolumeDriver.Snapshot.List", ["GET"])
 @add_debug_log
 def snapshot_list(req):
     name = req.get("Name")

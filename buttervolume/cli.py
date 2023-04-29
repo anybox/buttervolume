@@ -115,14 +115,14 @@ def scheduled(args):
             )
         return scheduled
     elif args.action == "pause":
-        resp = Session().post(  # TODO get
+        resp = Session().post(
             "http+unix://{}/VolumeDriver.Schedule.Pause".format(
                 urllib.parse.quote_plus(USOCKET)
             ),
         )
         return get_from(resp, "")
     elif args.action == "resume":
-        resp = Session().post(  # TODO get
+        resp = Session().post(
             "http+unix://{}/VolumeDriver.Schedule.Resume".format(
                 urllib.parse.quote_plus(USOCKET)
             ),
@@ -131,7 +131,7 @@ def scheduled(args):
 
 
 def snapshots(args):
-    resp = Session().post(  # TODO get
+    resp = Session().get(
         "http+unix://{}/VolumeDriver.Snapshot.List".format(
             urllib.parse.quote_plus(USOCKET)
         ),
