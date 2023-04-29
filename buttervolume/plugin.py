@@ -345,7 +345,7 @@ def snapshot_delete(req):
 def schedule(req):
     """Schedule or unschedule a job"""
     name = req["Name"]
-    timer = req["Timer"]
+    timer = str(req["Timer"])
     action = req["Action"]
     if os.path.exists(SCHEDULE_DISABLED):
         return {"Err": "Schedule is globally paused"}

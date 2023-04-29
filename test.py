@@ -3,7 +3,6 @@ import os
 import unittest
 import uuid
 import tempfile
-import time
 import weakref
 from buttervolume import btrfs, cli
 from buttervolume import plugin
