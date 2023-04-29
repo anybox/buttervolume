@@ -27,6 +27,7 @@ TEST_REMOTE_PATH = getconfig(
     config, "TEST_REMOTE_PATH", "/var/lib/buttervolume/received/"
 )
 SCHEDULE = getconfig(config, "SCHEDULE", "/etc/buttervolume/schedule.csv")
+SCHEDULE_DISABLED = f"{SCHEDULE}.disabled"
 FIELDS = ["Name", "Action", "Timer", "Active"]
 DRIVERNAME = getconfig(config, "DRIVERNAME", "anybox/buttervolume:latest")
 RUNPATH = getconfig(config, "RUNPATH", "/run/docker")
@@ -346,6 +347,8 @@ def schedule(req):
     name = req["Name"]
     timer = req["Timer"]
     action = req["Action"]
+    if os.path.exists(SCHEDULE_DISABLED):
+        return {"Err": "Schedule is globally paused"}
     if not os.path.exists(SCHEDULE):
         os.makedirs(dirname(SCHEDULE), exist_ok=True)
         with open(SCHEDULE, "w") as f:
@@ -358,9 +361,9 @@ def schedule(req):
                 if timer in ("0", "delete"):
                     continue
                 if timer == "pause":
-                    line["Active"] = True
-                if timer == "resume":
                     line["Active"] = False
+                if timer == "resume":
+                    line["Active"] = True
                 newschedule.append(line)
                 break
         else:
@@ -376,8 +379,10 @@ def schedule(req):
 
 @route("/VolumeDriver.Schedule.List", ["GET"])
 @add_debug_log
-def schedule_list(_):
+def scheduled(_):
     """List scheduled jobs"""
+    if os.path.exists(SCHEDULE_DISABLED):
+        return {"Err": "Schedule is globally paused"}
     schedule = []
     if os.path.exists(SCHEDULE):
         with open(SCHEDULE) as f:
@@ -385,21 +390,21 @@ def schedule_list(_):
     return {"Err": "", "Schedule": schedule}
 
 
-@route("/VolumeDriver.Schedule.Disable", ["GET"])
+@route("/VolumeDriver.Schedule.Pause", ["POST"])
 @add_debug_log
 def schedule_disable(_):
     """Disable scheduled jobs"""
     if os.path.exists(SCHEDULE):
-        os.rename(SCHEDULE, f"{SCHEDULE}.disabled")
+        os.rename(SCHEDULE, SCHEDULE_DISABLED)
     return {"Err": ""}
 
 
-@route("/VolumeDriver.Schedule.Enable", ["GET"])
+@route("/VolumeDriver.Schedule.Resume", ["POST"])
 @add_debug_log
 def schedule_enable(_):
     """Enable scheduled jobs"""
-    if os.path.exists(f"{SCHEDULE}.disabled"):
-        os.rename(f"{SCHEDULE}.disabled", SCHEDULE)
+    if os.path.exists(SCHEDULE_DISABLED):
+        os.rename(SCHEDULE_DISABLED, SCHEDULE)
     return {"Err": ""}
 
 

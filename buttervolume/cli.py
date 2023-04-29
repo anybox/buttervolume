@@ -1,6 +1,6 @@
 from bottle import app
 from buttervolume.plugin import FIELDS, LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
-from buttervolume.plugin import SCHEDULE
+from buttervolume.plugin import SCHEDULE, SCHEDULE_DISABLED
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
 from os.path import dirname, join, realpath
@@ -94,23 +94,44 @@ def schedule(args):
     resp = Session().post(
         "http+unix://{}{}".format(urllib.parse.quote_plus(USOCKET), urlpath), param
     )
-    res = get_from(resp, "")
-    return res
+    return get_from(resp, "")
 
 
-def scheduled(_):
-    urlpath = "/VolumeDriver.Schedule.List"
-    resp = Session().get(
-        "http+unix://{}{}".format(urllib.parse.quote_plus(USOCKET), urlpath)
-    )
-    scheduled = get_from(resp, "Schedule")
-    if scheduled:
-        print("\n".join(["{Action} {Timer} {Name}".format(**job) for job in scheduled]))
-    return scheduled
+def scheduled(args):
+    if args.action == "list":
+        urlpath = "/VolumeDriver.Schedule.List"
+        resp = Session().get(
+            "http+unix://{}{}".format(urllib.parse.quote_plus(USOCKET), urlpath)
+        )
+        scheduled = get_from(resp, "Schedule")
+        if scheduled:
+            print(
+                "\n".join(
+                    [
+                        f"{job['Action']} {job['Timer']} {job['Name']} {'(paused)' if job.get('Active')=='False' else ''}"
+                        for job in scheduled
+                    ]
+                )
+            )
+        return scheduled
+    elif args.action == "pause":
+        resp = Session().post(  # TODO get
+            "http+unix://{}/VolumeDriver.Schedule.Pause".format(
+                urllib.parse.quote_plus(USOCKET)
+            ),
+        )
+        return get_from(resp, "")
+    elif args.action == "resume":
+        resp = Session().post(  # TODO get
+            "http+unix://{}/VolumeDriver.Schedule.Resume".format(
+                urllib.parse.quote_plus(USOCKET)
+            ),
+        )
+        return get_from(resp, "")
 
 
 def snapshots(args):
-    resp = Session().post(
+    resp = Session().post(  # TODO get
         "http+unix://{}/VolumeDriver.Snapshot.List".format(
             urllib.parse.quote_plus(USOCKET)
         ),
@@ -216,6 +237,8 @@ class Arg:
 
 
 def runjobs(config=SCHEDULE, test=False, timer=TIMER):
+    if os.path.exists(SCHEDULE_DISABLED):
+        log.info("Schedule is globally paused")
     log.info("New scheduler job at %s", datetime.now())
     # open the config and launch the tasks
     if not os.path.exists(config):
@@ -380,7 +403,7 @@ def main():
 
     parser_schedule = subparsers.add_parser(
         "schedule",
-        help="Schedule or unschedule a snapshot, replication, synchronization or purge",
+        help="Schedule, unschedule, pause or resume a periodic snapshot, replication, synchronization or purge",
     )
     parser_schedule.add_argument(
         "action",
@@ -396,7 +419,7 @@ def main():
         "timer",
         metavar="timer",
         nargs=1,
-        help="Time span in minutes between two actions",
+        help="Time span in minutes between two actions. Or: '0' (or 'delete') to 'remove' the schedule, 'pause' to pause, 'resume' to resume",
     )
     parser_schedule.add_argument(
         "name",
@@ -405,7 +428,20 @@ def main():
         help="Name of the volume whose snapshots are to schedule",
     )
 
-    parser_scheduled = subparsers.add_parser("scheduled", help="List scheduled actions")
+    parser_scheduled = subparsers.add_parser(
+        "scheduled", help="List, pause or resume all the scheduled actions"
+    )
+    parser_scheduled.add_argument(
+        "action",
+        metavar="action",
+        nargs="?",
+        choices=("list", "pause", "resume"),
+        default="list",
+        help=(
+            "Name of the action on the scheduled list "
+            "(list, pause, resume). Default: list"
+        ),
+    )
 
     parser_restore = subparsers.add_parser("restore", help="Restore a snapshot")
     parser_restore.add_argument(
