@@ -1,5 +1,5 @@
 from bottle import app
-from buttervolume.plugin import FIELDS, LOGLEVEL, SOCKET, USOCKET, TIMER, SCHEDULE_LOG
+from buttervolume.plugin import FIELDS, LOGLEVEL, SOCKET, USOCKET, TIMER
 from buttervolume.plugin import SCHEDULE, SCHEDULE_DISABLED
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH
 from datetime import datetime, timedelta
@@ -132,10 +132,9 @@ def scheduled(args):
 
 def snapshots(args):
     resp = Session().get(
-        "http+unix://{}/VolumeDriver.Snapshot.List".format(
-            urllib.parse.quote_plus(USOCKET)
+        "http+unix://{}/VolumeDriver.Snapshot.List/{}".format(
+            urllib.parse.quote_plus(USOCKET), args.name
         ),
-        json.dumps({"Name": args.name}),
     )
     snapshots = get_from(resp, "Snapshots")
     if snapshots:
@@ -236,7 +235,9 @@ class Arg:
             setattr(self, k, v)
 
 
-def runjobs(config=SCHEDULE, test=False, timer=TIMER):
+def runjobs(config=SCHEDULE, test=False, schedule_log=None, timer=TIMER):
+    if schedule_log is None:
+        schedule_log = {"snapshot": {}, "replicate": {}, "synchronize": {}}
     if os.path.exists(SCHEDULE_DISABLED):
         log.info("Schedule is globally paused")
     log.info("New scheduler job at %s", datetime.now())
@@ -259,12 +260,12 @@ def runjobs(config=SCHEDULE, test=False, timer=TIMER):
                     continue
                 now = datetime.now()
                 # just starting, we consider beeing late on snapshots
-                SCHEDULE_LOG.setdefault(action, {})
-                SCHEDULE_LOG[action].setdefault(name, now - timedelta(1))
-                last = SCHEDULE_LOG[action][name]
+                schedule_log.setdefault(action, {})
+                schedule_log[action].setdefault(name, now - timedelta(1))
+                last = schedule_log[action][name]
                 if now < last + timedelta(minutes=int(timer)):
                     continue
-                if action not in SCHEDULE_LOG.keys():
+                if action not in schedule_log.keys():
                     log.warning("Skipping invalid action %s", action)
                     continue
                 # choose and run the right action
@@ -275,7 +276,7 @@ def runjobs(config=SCHEDULE, test=False, timer=TIMER):
                         log.info("Could not snapshot %s", name)
                         continue
                     log.info("Successfully snapshotted to %s", snap)
-                    SCHEDULE_LOG[action][name] = now
+                    schedule_log[action][name] = now
                 if action.startswith("replicate:"):
                     _, host = action.split(":")
                     log.info("Starting scheduled replication of %s", name)
@@ -286,7 +287,7 @@ def runjobs(config=SCHEDULE, test=False, timer=TIMER):
                     log.info("Successfully snapshotted to %s", snap)
                     send(Arg(snapshot=[snap], host=[host]), test=test)
                     log.info("Successfully replicated %s to %s", name, snap)
-                    SCHEDULE_LOG[action][name] = now
+                    schedule_log[action][name] = now
                 if action.startswith("purge:"):
                     _, pattern = action.split(":", 1)
                     log.info(
@@ -296,7 +297,7 @@ def runjobs(config=SCHEDULE, test=False, timer=TIMER):
                     )
                     purge(Arg(name=[name], pattern=[pattern], dryrun=False), test=test)
                     log.info("Finished purging")
-                    SCHEDULE_LOG[action][name] = now
+                    schedule_log[action][name] = now
                 if action.startswith("synchronize:"):
                     log.info("Starting scheduled synchronization of %s", name)
                     hosts = action.split(":")[1].split(",")
@@ -305,7 +306,7 @@ def runjobs(config=SCHEDULE, test=False, timer=TIMER):
                     log.debug("Successfully snapshotted to %s", snap)
                     sync(Arg(volumes=[name], hosts=hosts), test=test)
                     log.debug("End of %s synchronization from %s", name, hosts)
-                    SCHEDULE_LOG[action][name] = now
+                    schedule_log[action][name] = now
             except CalledProcessError as e:
                 log.error(
                     "Error processing scheduler action file %s "

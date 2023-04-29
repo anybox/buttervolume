@@ -51,17 +51,16 @@ if not os.path.exists(USOCKET):
 TIMER = int(getconfig(config, "TIMER", 60))
 DTFORMAT = getconfig(config, "DTFORMAT", "%Y-%m-%dT%H:%M:%S.%f")
 LOGLEVEL = getattr(logging, getconfig(config, "LOGLEVEL", "INFO"))
-SCHEDULE_LOG = {"snapshot": {}, "replicate": {}, "synchronize": {}}
 
 logging.basicConfig(level=LOGLEVEL)
 log = logging.getLogger()
 
 
 def add_debug_log(handler):
-    def new_handler():
+    def new_handler(*_, **kw):
         req = json.loads(request.body.read().decode() or "{}")
         log.debug("Request: %s %s", request.path, req)
-        resp = json.dumps(handler(req))
+        resp = json.dumps(handler(req, **kw))
         log.debug("Response: %s", resp)
         return resp
 
@@ -317,8 +316,14 @@ def volume_snapshot(req):
 
 @route("/VolumeDriver.Snapshot.List", ["GET"])
 @add_debug_log
-def snapshot_list(req):
-    name = req.get("Name")
+def snapshot_list(_):
+    snapshots = os.listdir(SNAPSHOTS_PATH)
+    return {"Err": "", "Snapshots": snapshots}
+
+
+@route("/VolumeDriver.Snapshot.List/<name>", ["GET"])
+@add_debug_log
+def snapshot_sublist(_, name=""):
     snapshots = os.listdir(SNAPSHOTS_PATH)
     if name:
         snapshots = [s for s in snapshots if s.startswith(name + "@")]
@@ -354,26 +359,26 @@ def schedule(req):
         with open(SCHEDULE, "w") as f:
             f.write("")
     with open(SCHEDULE) as f:
-        schedule = list(csv.DictReader(f, fieldnames=FIELDS))
-        newschedule = []
-        for line in schedule:
-            if line["Name"] == name and line["Action"] == action:
-                if timer in ("0", "delete"):
-                    continue
-                if timer == "pause":
-                    line["Active"] = False
-                if timer == "resume":
-                    line["Active"] = True
-                newschedule.append(line)
-                break
-        else:
-            if timer.isnumeric() and timer not in ("0", "delete"):
-                newschedule.append(
-                    {"Name": name, "Timer": timer, "Action": action, "Active": True}
-                )
+        schedule = {
+            f"{line['Name']}|{line['Action']}": line
+            for line in csv.DictReader(f, fieldnames=FIELDS)
+        }
+        if timer == "pause" and f"{name}|{action}" in schedule:
+            schedule[f"{name}|{action}"]["Active"] = False
+        elif timer == "resume" and f"{name}|{action}" in schedule:
+            schedule[f"{name}|{action}"]["Active"] = True
+        elif timer in ("0", "delete") and f"{name}|{action}" in schedule:
+            del schedule[f"{name}|{action}"]
+        elif timer.isnumeric() and timer not in ("0", "delete"):
+            schedule[f"{name}|{action}"] = {
+                "Name": name,
+                "Action": action,
+                "Timer": timer,
+                "Active": True,
+            }
 
     with open(SCHEDULE, "w") as f:
-        csv.DictWriter(f, fieldnames=FIELDS).writerows(newschedule)
+        csv.DictWriter(f, fieldnames=FIELDS).writerows(schedule.values())
     return {"Err": ""}
 
 

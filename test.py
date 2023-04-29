@@ -6,7 +6,7 @@ import tempfile
 import weakref
 from buttervolume import btrfs, cli
 from buttervolume import plugin
-from buttervolume.cli import scheduler
+from buttervolume.cli import runjobs
 from buttervolume.plugin import VOLUMES_PATH, SNAPSHOTS_PATH, TEST_REMOTE_PATH
 from buttervolume.plugin import compute_purges, DTFORMAT
 from datetime import datetime, timedelta
@@ -16,7 +16,6 @@ from webtest import TestApp
 
 # check that the target dir is btrfs
 SCHEDULE = plugin.SCHEDULE = tempfile.mkstemp()[1]
-SCHEDULE_LOG = plugin.SCHEDULE_LOG
 PREFIX_TEST_VOLUME = "buttervolume-test-"
 
 
@@ -231,12 +230,12 @@ class TestCase(unittest.TestCase):
         resp = self.app.post("/VolumeDriver.Snapshot", json.dumps({"Name": name2}))
         snap4 = json.loads(resp.body.decode())["Snapshot"]
         # list all the snapshots
-        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List")
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         # check the list of snapshots
         self.assertEqual(set(snapshots), set([snap1, snap2, snap3, snap4]))
         # list all the snapshots of the second volume only
-        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({"Name": name2}))
+        resp = self.app.get(f"/VolumeDriver.Snapshot.List/{name2}")
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         # check the list of snapshots
         self.assertEqual(set(snapshots), set([snap3, snap4]))
@@ -248,7 +247,7 @@ class TestCase(unittest.TestCase):
         self.create_a_volume_with_a_file(name)
         name2 = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         self.create_a_volume_with_a_file(name2)
-        # check we have no schedule
+        # check we have no schedule yet
         resp = self.app.get("/VolumeDriver.Schedule.List")
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 0)
@@ -270,9 +269,9 @@ class TestCase(unittest.TestCase):
         # check that the schedule is stored
         with open(SCHEDULE) as f:
             lines = f.readlines()
-            self.assertEqual(lines[1], "{},snapshot,60\n".format(name))
-        # run the scheduler
-        scheduler(SCHEDULE, test=True)
+            self.assertEqual(lines[1], "{},snapshot,60,True\n".format(name2))
+        # run the scheduler jobs
+        runjobs(SCHEDULE, test=True)
         # check we have two snapshots
         self.assertEqual(
             2,
@@ -296,10 +295,10 @@ class TestCase(unittest.TestCase):
         resp = self.app.get("/VolumeDriver.Schedule.List")
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 1)
-        # simulate we spent more time
-        SCHEDULE_LOG["snapshot"][name2] = datetime.now() - timedelta(1)
-        # run the scheduler and check we only have one more snapshot
-        scheduler(SCHEDULE, test=True)
+        # simulate the last snapshot is 1 day in the past
+        schedule_log = {"snapshot": {name2: datetime.now() - timedelta(days=1)}}
+        # run the scheduler jobs and check we only have one more snapshot
+        runjobs(SCHEDULE, test=True, schedule_log=schedule_log)
         self.assertEqual(
             3,
             len(
@@ -328,12 +327,12 @@ class TestCase(unittest.TestCase):
         # create a volume with a file
         name = PREFIX_TEST_VOLUME + uuid.uuid4().hex
         self.create_a_volume_with_a_file(name)
-        # check we have no schedule
+        # check we have no schedule yes
         resp = self.app.get("/VolumeDriver.Schedule.List")
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 0)
         # check we have no snapshots
-        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List")
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         self.assertEqual(len(snapshots), 0)
         # replicate the volume every 120 minutes
@@ -346,11 +345,12 @@ class TestCase(unittest.TestCase):
             "/VolumeDriver.Schedule",
             json.dumps({"Name": "boo", "Action": "replicate:localhost", "Timer": 120}),
         )
-        # simulate we spent more time
-        SCHEDULE_LOG.setdefault("replicate:localhost", {})
-        SCHEDULE_LOG["replicate:localhost"][name] = datetime.now() - timedelta(1)
-        # run the scheduler and check we only have two more snapshots
-        scheduler(SCHEDULE, test=True)
+        # simulate the last replicate is 1 day in the past
+        schedule_log = {
+            "replicate:localhost": {name: datetime.now() - timedelta(days=1)}
+        }
+        # run the scheduler jobs jobs and check we only have two more snapshots
+        runjobs(SCHEDULE, test=True, schedule_log=schedule_log)
         self.assertEqual(
             2,
             len(
@@ -579,10 +579,9 @@ class TestCase(unittest.TestCase):
             "/VolumeDriver.Schedule",
             json.dumps({"Name": name, "Action": "purge:2h:2h", "Timer": 60}),
         )
-        SCHEDULE_LOG.setdefault("purge:2h:2h", {})
-        SCHEDULE_LOG["purge:2h:2h"][name] = datetime.now() - timedelta(minutes=90)
+        schedule_log = {"purge:2h:2h": {name: datetime.now() - timedelta(days=1)}}
         nb_snaps = len(os.listdir(SNAPSHOTS_PATH))
-        scheduler(SCHEDULE, test=True)
+        runjobs(config=SCHEDULE, test=True, schedule_log=schedule_log)
         self.assertEqual(len(os.listdir(SNAPSHOTS_PATH)), nb_snaps - 18)
         # unschedule
         self.app.post(
@@ -637,12 +636,12 @@ class TestCase(unittest.TestCase):
         path = join(VOLUMES_PATH, name)
         remote_path = join(TEST_REMOTE_PATH, name)
         self.create_a_volume_with_a_file(name)
-        # check we have no schedule
+        # check we have no schedule yes
         resp = self.app.get("/VolumeDriver.Schedule.List")
         schedule = json.loads(resp.body.decode())["Schedule"]
         self.assertEqual(len(schedule), 0)
         # check we have no snapshots
-        resp = self.app.get("/VolumeDriver.Snapshot.List", json.dumps({}))
+        resp = self.app.get("/VolumeDriver.Snapshot.List")
         snapshots = json.loads(resp.body.decode())["Snapshots"]
         self.assertEqual(len(snapshots), 0)
         # synchronize the volume every 120 minutes, even some host are not
@@ -664,15 +663,16 @@ class TestCase(unittest.TestCase):
                 {"Name": "boo", "Action": "synchronize:localhost", "Timer": 120}
             ),
         )
-        # simulate we spent more time
-        SCHEDULE_LOG.setdefault("synchronize:localhost,wronghost.mlf", {})
-        SCHEDULE_LOG["synchronize:localhost,wronghost.mlf"][
-            name
-        ] = datetime.now() - timedelta(1)
+        # simulate the last synchronize is 1 day in the past
+        schedule_log = {
+            "synchronize:localhost,wronghost.mlf": {
+                name: datetime.now() - timedelta(days=1)
+            }
+        }
         with TemporaryDirectory(path=remote_path) as remote_path:
             with open(join(remote_path, "foobar"), "w") as f:
                 f.write("test sync")
-            scheduler(SCHEDULE, test=True)
+            runjobs(SCHEDULE, test=True, schedule_log=schedule_log)
         # make sure a snapshot has occured before rsync
         snapshots = [s for s in os.listdir(SNAPSHOTS_PATH) if s.startswith(name)]
         self.assertEqual(1, len(snapshots))
