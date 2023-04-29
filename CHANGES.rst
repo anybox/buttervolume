@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.11 (unreleased)
+*****************
+
+- Allow to pause or resume periodic jobs individually or globally
+- Improved the scheduling code and shutdown the thread properly
+
 3.10 (2023-04-09)
 *****************
 
