@@ -270,10 +270,10 @@ Creating and deleting volumes
 -----------------------------
 
 Once the plugin is running, whenever you create a container you can specify the
-volume driver with ``docker create --volume-driver=btrfs --name <name>
+volume driver with ``docker create --volume-driver=anybox/buttervolume --name <name>
 <image>``.  You can also manually create a BTRFS volume with ``docker volume
-create -d btrfs``. It also works with docker-compose, by specifying the
-``btrfs`` driver in the ``volumes`` section of the compose file.
+create -d anybox/buttervolume``. It also works with docker-compose, by specifying the
+``anybox/buttervolume`` driver in the ``volumes`` section of the compose file.
 
 When you delete the volume with ``docker rm -v <container>`` or ``docker volume
 rm <volume>``, the BTRFS subvolume is deleted. If you snapshotted the volume
@@ -639,8 +639,8 @@ Then stop all your containers, excepted buttervolume
 
 Now snapshot and delete all your volumes::
 
-    volumes=$(docker volume ls -f driver=btrfs --format "{{.Name}}")
-    # or: # volumes=$(docker volume ls -f driver=btrfs|tail -n+2|awk '{print $2}')
+    volumes=$(docker volume ls -f driver=anybox/buttervolume:latest --format "{{.Name}}")
+    # or: # volumes=$(docker volume ls -f driver=anybox/buttervolume:latest|tail -n+2|awk '{print $2}')
     echo $volumes
     for v in $volumes; do docker exec buttervolume_plugin_1 buttervolume snapshot $v; done
     for v in $volumes; do docker volume rm $v; done
